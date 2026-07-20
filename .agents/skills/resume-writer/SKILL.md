@@ -105,10 +105,9 @@ explicitly asks ("resume only"). Tell the user which artifacts you produced and 
 `applications/<status>/` (see "Before You Start" item 6). Abort if duplicate or
 blacklisted.
 
-**If job-search's `handoff.py` already scaffolded this folder** (a `meta.yaml` and
-`source/JD-<job title>.md` are present), Step 1 is done — do not re-create or re-verify the
-folder, JD, or the facts it carried. Skip to Step 2; only if `handoff.py` reported metadata
-gaps, run `status.py --enrich-metadata <folder>` first, then continue to Gap Analysis.
+**If job-search's `handoff.py` already scaffolded this folder** (`meta.yaml` + `source/JD-*.md`
+present), Step 1 is done — do not re-create or re-verify what it wrote. Skip to Step 2; if
+handoff reported metadata gaps, run `status.py --enrich-metadata <folder>` first.
 
 Generate a slug: `<company>-<role>-<YYYYMMDD>` (lowercase, hyphens, no special characters).
 Confirm the slug path does not already exist under any status folder.
@@ -472,17 +471,13 @@ For any JD skill in NONE of the lists, ask the user at the end of the run to cat
 it by its concrete resume consequence:
 
 - **Never** — never include this skill in any resume, even when a JD mentions it.
-- **Weak or Selective** — include only when the JD specifically mentions it. This may
-  represent limited familiarity, but it may instead reflect strange, awkward, overly
-  specific, or undesirable wording that should not appear on the regular resume.
-- **Approved** — generally include in most resumes, if not all, subject to relevance and
-  available space.
-- **Other** — the user needs clarification, wants to distinguish a phrase from a skill,
-  or wants to discuss how it should be normalized before categorizing it
+- **Weak or Selective** — include only when the JD specifically mentions it: limited
+  familiarity, or wording too strange/awkward/specific for the regular resume.
+- **Approved** — generally include in most resumes, if not all, subject to relevance and space.
+- **Other** — needs clarification (phrase vs skill, normalization) before categorizing.
 
-`Weak or Selective` is the user-facing label for the stored `### Weak` profile subsection.
-Record that answer under `Weak`; do not rename the profile subsection or change the parser's
-category names.
+`Weak or Selective` is the user-facing label for the stored `### Weak` profile subsection —
+record answers under `Weak`; never rename the subsection or the parser's category names.
 
 The interaction protocol is strict:
 
@@ -494,15 +489,12 @@ The interaction protocol is strict:
    2. **Weak or Selective — include only when the JD specifically mentions it**
    3. **Approved — include in most resumes, if not all**
    4. **Other** (free text for clarification)
-   With an interactive question tool whose built-in Other choice is automatic, provide
-   only the three consequence-labeled choices above so the tool appends Other last. Use one
-   question object per call. Never show bare `Never` / `Weak` / `Approved` labels without
-   their consequences. If recommending a category, state the recommendation in the prompt
-   without changing the choice order.
+   With an interactive question tool whose built-in Other choice is automatic, provide only
+   the three consequence-labeled choices (one question object per call); never show bare
+   labels without consequences. Recommend a category in the prompt without reordering choices.
 3. Wait for the user's answer before asking about the next skill. After a Never /
-   Weak-or-Selective / Approved answer, update the corresponding stored list in the candidate profile
-   (`config.profile_md_path()`); that answer is the required permission for this profile
-   edit. Then ask the next queued skill, if any.
+   Weak-or-Selective / Approved answer, update that stored list in the candidate profile
+   (`config.profile_md_path()`); the answer is the required permission. Ask the next queued skill.
 4. If the user selects Other, clarify that same skill and then ask it again with the same
    fixed choice order. Do not update the profile or advance the queue until it is
    categorized.
