@@ -93,18 +93,26 @@ so personal skip rules never live in the public `companies.yaml`.
 
 ## Setup steps
 
-Starting from a fresh public checkout (clone of the public toolkit repo):
-
-1. **Mount the overlay.** Clone (or symlink) your private overlay into the
-   git-ignored `private/` path of the public checkout:
+1. **Clone the public toolkit + create the venv.**
 
    ```bash
-   git clone git@github.com:you/my-jobhunt-overlay.git private
-   # or, if the overlay already lives elsewhere:
-   ln -s /abs/path/to/my-jobhunt-overlay private
+   git clone https://github.com/<owner>/jobs-finder-toolkit.git   # or your fork
+   cd jobs-finder-toolkit
+   python3 -m venv .venv
+   .venv/bin/pip install -r requirements.txt
    ```
 
-2. **Create `config.yaml`.** Copy the example and edit the `paths.*` to point at
+2. **Mount your overlay.** Clone (or symlink) your **own** private overlay repo
+   into the git-ignored `private/` path (replace `<you>/<your-private-overlay>`
+   with your private remote):
+
+   ```bash
+   git clone git@github.com:<you>/<your-private-overlay>.git private
+   # or, if the overlay already lives elsewhere:
+   ln -s /abs/path/to/your-overlay private
+   ```
+
+3. **Create `config.yaml`.** Copy the example and edit the `paths.*` to point at
    your overlay data (paths resolve relative to the config file's directory):
 
    ```bash
@@ -133,29 +141,33 @@ Starting from a fresh public checkout (clone of the public toolkit repo):
    gets committed. (If you prefer, point `paths.*` at in-place folders like
    `applications/` — those are git-ignored too.)
 
-3. **Mount the private skill.** Make the overlay's `coding-interview` skill visible
-   at the canonical skills path, then register its router:
+4. **Wire the overlay + git hooks.** One idempotent, stdlib-only step creates every
+   overlay symlink and installs the tracked git hooks:
 
    ```bash
-   ln -s ../../private/skills/coding-interview .agents/skills/coding-interview
-   cp docs/overlay-templates/private-skills.mdc .cursor/rules/private-skills.mdc
+   python scripts/bootstrap_overlay.py          # add --check to preview, make no changes
    ```
 
-   Both `.agents/skills/coding-interview/` and `.cursor/rules/private-skills.mdc`
-   are git-ignored in the public repo, so the private skill stays out of public
-   history while remaining discoverable whenever the overlay is mounted.
+   With `private/` mounted it symlinks (skipping any that already point correctly):
 
-4. **Add your real job-search profile(s).** Drop them next to the example profile
-   and point `config.job_search.default_profile` at one:
+   - `.agents/skills/coding-interview` → `private/skills/coding-interview` — the private skill;
+   - `.cursor/rules/private-skills.mdc` → `private/cursor-rules/private-skills.mdc` — its router,
+     which the overlay seeds from `docs/overlay-templates/private-skills.mdc`;
+   - one link per `private/job-search-profiles/*.yaml` into
+     `.agents/skills/job-search/profiles/` — then point `config.job_search.default_profile` at one.
 
-   ```bash
-   cp private/job-search-profiles/my-default.yaml \
-      .agents/skills/job-search/profiles/my-default.yaml
-   ```
+   It **always** installs `hooks/pre-commit` and `hooks/pre-push` into `.git/hooks`
+   (never clobbering a foreign hook — it warns instead), and re-running is a safe
+   no-op. All of `.agents/skills/coding-interview/`, `.cursor/rules/private-skills.mdc`,
+   and any personal `*.yaml` profiles are git-ignored in the public repo, so the private
+   skill and your profiles stay out of public history while remaining discoverable
+   whenever the overlay is mounted. (The `.agents/skills/job-search/profiles/` folder keeps
+   only `example.yaml`, `_TEMPLATE.yaml`, and `README.md` public.)
 
-   (The `.agents/skills/job-search/profiles/` folder keeps `example.yaml`,
-   `_TEMPLATE.yaml`, and `README.md` public; any `<label>.yaml` you add here is
-   your own — keep personal profiles in the overlay and out of the public repo.)
+**Maintainer note.** The maintainer keeps the canonical overlay as its own private
+GitHub repo, mounted at `private/` exactly as above; the public repo is produced from
+that combined working checkout with the exporter (next section). Strangers do not need
+(or get) access to it — the `<you>/<your-private-overlay>` placeholder is your own.
 
 ## Producing / refreshing the public repo
 

@@ -1,6 +1,11 @@
-# Jobs Finder
+# Jobs Finder — job-hunting toolkit
 
-A minimal toolkit for ATS-optimized resume generation and job application tracking, powered by Cursor AI.
+The **public** `jobs-finder-toolkit` repository, licensed **Apache-2.0**.
+A minimal toolkit for ATS-optimized resume generation, job discovery,
+and application tracking, driven by AI agents. The skills live in `.agents/skills/` and work
+from Claude Code, Cursor, or Codex. It ships timeless tooling plus a fictional "Jordan Rivers"
+example candidate under `examples/`; your real data stays in a separate private overlay (see
+"Bring your own data"). Contributions welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## How It Works
 
@@ -38,21 +43,28 @@ are resolved relative to the config file's directory.
 
 ## Quickstart
 
-### 1. Install dependencies
+### 1. Clone and install dependencies
 
 ```bash
-pip install -r requirements.txt
+git clone https://github.com/<owner>/jobs-finder-toolkit.git   # or your fork
+cd jobs-finder-toolkit
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
 ```
+
+No `config.yaml` is needed to try the toolkit: with none present, every tool falls back to the
+fictional `config.example.yaml` and the `examples/` **Jordan Rivers** fixture, so you can run
+any skill against the example candidate right away.
 
 For PDF conversion, install one of:
 - **LibreOffice** (recommended): `brew install --cask libreoffice`
-- **Microsoft Word** (if already installed): `pip install docx2pdf`
+- **Microsoft Word** (if already installed): `.venv/bin/pip install docx2pdf`
 
-Optional (recommended for contributors): install the pre-commit hook so vendored
-copies can't silently drift and Python stays byte-compilable:
+Optional (recommended for contributors): wire the tracked git hooks (vendored-copy drift check
++ byte-compile) with the idempotent, stdlib-only bootstrap script:
 
 ```bash
-ln -sf ../../hooks/pre-commit .git/hooks/pre-commit
+python scripts/bootstrap_overlay.py
 ```
 
 ### 2. Review your profile
@@ -147,9 +159,9 @@ pull request. It:
 2. **Compile** — byte-compiles all toolkit and skill Python (`compileall`).
 3. **Example render + validate** — renders and validates the worked example under
    `examples/applications/6_drafted/` using the fake `config.example.yaml`.
-4. **Leak guard** — runs `scripts/publish/check_public.py`. This step is **expected to fail in a
-   combined/private checkout** and passes only in the exported public repo — it is the publish
-   gate that prevents leaking personal data or private skills.
+4. **Leak guard** — runs `scripts/publish/check_public.py`, a **blocking** gate. This is the
+   public repo, so the guard must be **completely clean** (exit 0, zero findings); any finding is
+   a regression. It prevents leaking personal data or private skills.
 
 ## Public + private (two-repo) setup
 
@@ -173,6 +185,22 @@ reference DOCX, and applications:
   excludes them; only fake `examples/**` counterparts are published.
 - The overlay also ships the git-ignored `.cursor/rules/private-skills.mdc` that registers the
   `coding-interview` skill, so it's discoverable only when the overlay is mounted.
+
+### Bring your own data
+
+To point the toolkit at your real profile and applications:
+
+1. Copy the example config and edit its `paths.*` to point at your own files:
+   `cp config.example.yaml config.yaml`. `config.yaml` is git-ignored, so your identity is never
+   committed. Paths resolve relative to the config file's directory.
+2. (Optional) Keep your real data in a **separate private repo** mounted at the git-ignored
+   `private/` path (`git clone <you>/<your-private-overlay> private`, or symlink it there), then
+   point `paths.*` at `private/…`.
+3. Wire the overlay symlinks + git hooks idempotently:
+   `python scripts/bootstrap_overlay.py`.
+
+Full walkthrough — overlay layout, config keys, and the leak guard — is in
+[docs/PRIVATE_OVERLAY.md](docs/PRIVATE_OVERLAY.md).
 
 ## Folder Structure
 
