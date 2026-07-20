@@ -58,7 +58,6 @@ ALLOWLIST_FILES = [
     "LICENSE",
     "requirements.txt",
     "config.example.yaml",
-    ".cursor/rules/shared-skills.mdc",
 ]
 
 # Allowlisted directory trees (copied recursively, then denylist-filtered).

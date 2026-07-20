@@ -8,8 +8,8 @@ instead). This is the one-shot "make my checkout work" step referenced by
 
 What it does:
   (a) If the private overlay is mounted at ``private/``: symlink the private
-      ``coding-interview`` skill, the private cursor-rules router, and each
-      ``private/job-search-profiles/*.yaml`` into their canonical toolkit paths.
+      ``coding-interview`` skill and each ``private/job-search-profiles/*.yaml``
+      into their canonical toolkit paths.
   (b) Always: install the tracked git hooks (``hooks/pre-commit`` /
       ``hooks/pre-push``) into ``.git/hooks`` — only when missing or already
       pointing there; a foreign hook is left alone with a warning.
@@ -102,8 +102,6 @@ def _overlay_links(private: Path) -> list[tuple[Path, Path]]:
     links = [
         (REPO_ROOT / ".agents/skills/coding-interview",
          private / "skills/coding-interview"),
-        (REPO_ROOT / ".cursor/rules/private-skills.mdc",
-         private / "cursor-rules/private-skills.mdc"),
     ]
     profiles = private / "job-search-profiles"
     if profiles.is_dir():

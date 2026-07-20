@@ -4,7 +4,7 @@
     "name": "Jobs Finder Toolkit"
   },
   "metadata": {
-    "description": "Public job-hunting toolkit: self-contained Claude Code / Cursor skills for job search, resume tailoring, application tracking, and interview prep."
+    "description": "Public job-hunting toolkit: self-contained, agent-agnostic skills for job search, resume tailoring, application tracking, and interview prep."
   },
   "plugins": [
     {

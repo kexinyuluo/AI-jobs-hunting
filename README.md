@@ -3,7 +3,7 @@
 The **public** `jobs-finder-toolkit` repository, licensed **Apache-2.0**.
 A minimal toolkit for ATS-optimized resume generation, job discovery,
 and application tracking, driven by AI agents. The skills live in `.agents/skills/` and work
-from Claude Code, Cursor, or Codex. It ships timeless tooling plus a fictional "Jordan Rivers"
+from any AI coding agent that reads `AGENTS.md` (Claude Code, Cursor, Codex, and others). It ships timeless tooling plus a fictional "Jordan Rivers"
 example candidate under `examples/`; your real data stays in a separate private overlay (see
 "Bring your own data"). Contributions welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
 
@@ -78,7 +78,7 @@ Your professional profile is at your candidate profile (`config.profile_md_path(
 
 ### 3. Tailor a resume for a job
 
-In Cursor, tell the AI:
+Tell your AI agent:
 
 > Tailor my resume for this job: [paste the job description]
 
@@ -188,8 +188,9 @@ reference DOCX, and applications:
   company-level cache, and your real profile / baseline / reference DOCX — belong in the
   private overlay. Exported public checkouts git-ignore these paths, and the public exporter
   excludes them; only fake `examples/**` counterparts are published.
-- The overlay also ships the git-ignored `.cursor/rules/private-skills.mdc` that registers the
-  `coding-interview` skill, so it's discoverable only when the overlay is mounted.
+- The overlay's private `coding-interview` skill is wired in by `scripts/bootstrap_overlay.py`
+  as a git-ignored symlink under `.agents/skills/`, so it's discoverable only when the overlay
+  is mounted.
 
 ### Bring your own data
 
@@ -250,5 +251,5 @@ skill shipped by the private overlay and is never published here.
   baseline / reference DOCX content
 - `config.yaml` is git-ignored (your real identity, paths, and filename stems); only
   `config.example.yaml` is tracked
-- `.cursor/MEMORY.md` is gitignored (personal cross-session notes)
+- `.agents/MEMORY.md` is gitignored (personal cross-session notes)
 - `.DS_Store` and other OS/editor junk remain gitignored

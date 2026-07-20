@@ -1,7 +1,7 @@
 # Lessons — Job Search
 
 Curated operational lessons from real usage — mostly hard-won domain edge cases (visa phrasing,
-title/location false-matches, source noise). Promote durable heuristics here from `.cursor/MEMORY.md`
+title/location false-matches, source noise). Promote durable heuristics here from `.agents/MEMORY.md`
 after they prove out. The two-stage model and AI-native scoring are explained in SKILL.md.
 
 Last reviewed: 2026-07-19

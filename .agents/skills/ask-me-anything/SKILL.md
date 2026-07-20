@@ -55,7 +55,7 @@ These are the global dependencies. Per-step extras are listed under each step.
 | Python 3.11+ in a repo venv | Runs every toolkit script | `uv venv` (creates `.venv/`), then always call `.venv/bin/python` |
 | Python packages | YAML + DOCX + PDF parsing | `.venv/bin/pip install -r requirements.txt` (pyyaml, python-docx, pypdf) |
 | LibreOffice **or** Word+docx2pdf | DOCX → PDF for resumes/cover letters (Step 3) | `brew install --cask libreoffice` (recommended), or `pip install docx2pdf` if you have Word |
-| An AI agent (Cursor / Claude Code) | Reads the skills and drives the workflow | Open the repo in the agent; skills auto-route |
+| Any AI coding agent | Reads `AGENTS.md` + `.agents/skills/` and drives the workflow | Open the repo in the agent (Claude Code, Cursor, Codex, …); skills auto-route |
 
 Optional but recommended: install the git pre-commit hook so vendored script copies can't
 drift — `ln -sf ../../hooks/pre-commit .git/hooks/pre-commit`.

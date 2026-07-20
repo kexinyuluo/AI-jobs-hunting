@@ -22,7 +22,7 @@ When one company posts several jobs the default is one resume covering them all 
 cover letter per posting); only divergent roles split into separate applications. The
 canonical company registry `.agents/skills/job-search/companies.yaml` is the single source of
 truth for company identity, ATS poll config, and the blacklist. Project skills live
-canonically in `.agents/skills/` so Codex, Claude Code, and Cursor share them. The toolkit
+canonically in `.agents/skills/` so every AI agent shares them. The toolkit
 ships **public** (timeless tooling + a fake example candidate); a **private overlay** supplies
 the real identity and products (see "Public vs Private").
 
@@ -103,10 +103,10 @@ tracked) may hold generic extracted docs.
 real identity and scans both text and document-binary (`.docx`/`.pdf`) content. The
 exporter (`export_public.py`) always runs it against the copied tree as the final gate.
 
-**Routing**: the public skills table below and the shared router
-`.cursor/rules/shared-skills.mdc` list only PUBLIC skills. The private `coding-interview` skill
-is registered separately by a git-ignored `.cursor/rules/private-skills.mdc` shipped in the
-overlay, so it stays discoverable whenever the overlay is mounted.
+**Routing**: skills are discovered by listing `.agents/skills/` — this file's skills table
+names only the PUBLIC ones that ship in the repo. The private `coding-interview` skill
+appears in `.agents/skills/` via a git-ignored symlink that `scripts/bootstrap_overlay.py`
+creates, so it stays discoverable whenever the overlay is mounted.
 
 ## Folder Structure
 
@@ -163,11 +163,8 @@ live) and `config.discoveries_dir()` are support folders, not applications.
 | `.agents/skills/application-tracker/` | PUBLIC skill for application status and pipeline management |
 | `.agents/skills/behavioral-interview-prep/` | PUBLIC skill for behavioral interview story banks and STAR answers |
 | `.agents/skills/company-research/` | PUBLIC skill for researching a company + role for interviews (product, size, teams, values, stage, comp, WLB, ratings, visa) and drafting a hiring-manager/engineer question bank under `interviews/company-specific/<company>/company-info/` |
-| `.cursor/rules/shared-skills.mdc` | Router for PUBLIC skills (tracked); lists only public skills |
-| `.cursor/rules/private-skills.mdc` | Router for the PRIVATE `coding-interview` skill — git-ignored, shipped by the overlay so it's discoverable only when the overlay is mounted |
-| `.claude/skills/` | Claude Code compatibility symlinks to `.agents/skills` |
-| `.cursor/skills/` | Cursor compatibility symlinks to `.agents/skills` |
-| `.cursor/MEMORY.md` | Cross-session hypotheses and learnings (gitignored) |
+| `.claude/skills/`, `.cursor/skills/` | Tool-compatibility symlinks to `.agents/skills` (for agents that look in their own skill directories) |
+| `.agents/MEMORY.md` | Cross-session hypotheses and learnings (gitignored) |
 | `tmp/` | Gitignored scratch space for **all** disposable, ad-hoc work — one-off ATS/API probes, fetched web artifacts, sanity checks — organized into purpose-named subfolders (`tmp/ats_scripts/`, `tmp/web_artifacts/`, `tmp/scratch/`). Never committed (only `tmp/README.md` is); nothing in the toolkit may depend on it. See "Scratch & Temporary Files" |
 | `README.md` | Human-facing quickstart |
 | `AGENTS.md` | This file (agent-facing contract) |
@@ -249,8 +246,8 @@ pip install -r requirements.txt
    - `.agents/skills/application-tracker/SKILL.md` for status management
    - `.agents/skills/behavioral-interview-prep/SKILL.md` for behavioral interview prep
    - `.agents/skills/company-research/SKILL.md` for researching a company/role for interviews and building a question bank
-   - (The private `coding-interview` skill, when the overlay is mounted, is routed via `.cursor/rules/private-skills.mdc`.)
-3. Read `.cursor/MEMORY.md` (if it exists) for cross-session context.
+   - (The private `coding-interview` skill, when the overlay is mounted, appears at `.agents/skills/coding-interview/` via the bootstrap symlink.)
+3. Read `.agents/MEMORY.md` (if it exists) for cross-session context.
 4. Read the candidate profile (`config.profile_md_path()`) before tailoring — this is the source of truth.
 
 ### Memory Map
@@ -266,7 +263,7 @@ enforced by the `gardener` (`.agents/skills/gardener/`, dry-run by default).
 | `AGENTS.md` | (b) harness | permanent, versioned | human + agent (PR) |
 | `SKILL.md` / `reference.md` | (b) instructions | permanent, versioned; size-budgeted | human + agent (PR) |
 | `LESSONS.md` | (c) durable memory | `last_confirmed` >180d → gardener flags demotion; universalized entries promote into SKILL.md (separate human commit) | agent proposes, human ratifies |
-| `.cursor/MEMORY.md` | (d) scratch (gitignored) | ephemeral; entries >14d promote to LESSONS or drop | agent |
+| `.agents/MEMORY.md` | (d) scratch (gitignored) | ephemeral; entries >14d promote to LESSONS or drop | agent |
 | `<applications_root>/0_profile/applications-log.yaml` | (d) derived index | regenerable — never hand-edit; `status.py --sync-log` rebuilds it | `status.py` |
 | `<applications_root>/0_profile/company-search-log.yaml` | (d) TTL state | read-side skip `skip_within_days: 7`; rows >90d pruned | `status.py` / gardener |
 | `config.company_levels_path()` | (d) TTL cache | comp facts 365d (`last_verified`); level maps re-verified, not expired | agent / `import_company_levels.py` |
