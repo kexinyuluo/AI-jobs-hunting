@@ -94,6 +94,23 @@ validation, `check.py`, no-fabrication rules) run identically in both modes.
 | + Stage 2 (instruction tiering) | ~35k | ~150k | ~185k | −58% |
 | + Stage 3, `token_saving` default (no search subagent, card-only context, capped cycles) | ~8k | ~110k | ~120k | **−73%** |
 | Stage 3, `full` mode | ≈ baseline, minus Stage 1–2 savings | | ~200k | −54% |
+| **+ Stage 1 (measured 2026-07-20, post-merge)** | 158k | 343k | **~502k** | **+15%** |
+
+**Stage 1 measured note (2026-07-20).** The mechanisms all landed: the widening journey
+that cost the baseline 7 full fetches ran as snapshot refilters (3 fetches + 7 zero-network
+refilters), render cycles dropped from 3 to 1–2 (the baseline-collision fix produced zero
+false positives), handoff scaffolding emitted validated folders with no hand transcription,
+and each JD was fetched once, verbatim. Total tokens still rose because (a) the freed budget
+went to deeper verification the design deliberately preserves — JD-text checks disqualified
+three mislabeled postings *before* handoff that the baseline pipeline would have drafted;
+(b) the run did strictly more product work than the baseline (a second-profile market sweep,
+per-letter product research, one metadata-extractor gap diagnosed); and (c) the instruction
+boot tax — untouched by Stage 1, exactly per Approach 1's analysis — was paid in full by all
+three agents (~35–40% each). Per the execution plan's gate rule (≥25% off projection →
+pause and analyze), Stage 2 waits for maintainer review; the boot tax is now the binding
+constraint, and the benchmark scenario should be pinned (fixed profile count and
+verification depth) so future rows measure cost, not scope. Full record:
+`evals/results/stage1-benchmark-20260720.md`.
 
 ## How to re-measure
 
