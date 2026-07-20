@@ -1,20 +1,19 @@
 # CI — the gate for the PUBLIC job-hunting toolkit repo.
 #
 # Steps 1-3 (vendored-copy drift check, compile, example render + validate) verify
-# the toolkit itself and pass in ANY checkout (combined/private or public).
+# the toolkit itself and pass in ANY checkout (with or without the private overlay).
 #
 # Step 4 runs the publish leak-guard UNIT TESTS — a required gate that exercises
 # the guard/exporter tooling itself (structural PII detection, path denylist,
 # fail-closed binaries, allowlist copy). These must pass everywhere.
 #
-# Step 5 is the public leak guard (scripts/publish/check_public.py). It is the
-# real publish gate and is intended to be GREEN on the exported PUBLIC mirror.
-# In THIS combined/private checkout it is still expected to be RED (real identity
-# and the private `coding-interview` skill are tracked here), so it runs as an
-# ADVISORY step (`continue-on-error`) — visible but non-blocking — until the
-# Wave-2 migration moves private data under `private/`. On the public mirror,
-# set the `JOBHUNT_PERSONAL_TOKENS` repo secret so the guard is armed there, and
-# flip this step to blocking (remove `continue-on-error`).
+# Step 5 is the public leak guard (scripts/publish/check_public.py) — a BLOCKING
+# gate. This IS the public toolkit repo, so the guard must be completely clean
+# (exit 0, zero findings) on every run; ANY finding is a regression. It is armed
+# with the `JOBHUNT_PERSONAL_TOKENS` repo secret when present. Fork PRs do NOT
+# receive repo secrets, so on a fork the guard runs tokenless (structural PII +
+# path / private-skill checks only) — safe by design, because a clean public tree
+# passes without any identity tokens.
 #
 # The `secret-scan` job (gitleaks) is an independent gate that catches credential
 # shapes the identity guard does not target.
@@ -76,13 +75,13 @@ jobs:
       - name: Leak-guard + exporter unit tests
         run: python -m unittest discover scripts/publish/tests
 
-      # 5. Public leak guard — the real publish gate (green on the exported PUBLIC
-      #    mirror). ADVISORY in this combined checkout (expected red until the
-      #    Wave-2 private/ migration); it is armed by the JOBHUNT_PERSONAL_TOKENS
-      #    secret when present (set it on the mirror). Remove continue-on-error on
-      #    the mirror to make it blocking.
-      - name: Public leak guard (advisory here; MUST pass on the public mirror)
-        continue-on-error: true
+      # 5. Public leak guard — BLOCKING. This is the public toolkit repo, so the
+      #    guard must be completely clean (exit 0, zero findings); ANY finding is a
+      #    regression. Armed with the JOBHUNT_PERSONAL_TOKENS repo secret when
+      #    present. Fork PRs receive no secrets, so those runs are tokenless
+      #    (structural + path/private-skill checks only) by design — a clean public
+      #    tree passes without identity tokens.
+      - name: Public leak guard (blocking; must be clean on this public repo)
         env:
           JOBHUNT_PERSONAL_TOKENS: ${{ secrets.JOBHUNT_PERSONAL_TOKENS }}
         run: python scripts/publish/check_public.py

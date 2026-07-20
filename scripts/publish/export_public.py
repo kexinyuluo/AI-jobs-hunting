@@ -89,37 +89,10 @@ PUBLIC_PROFILE_FILES = {"example.yaml", "_TEMPLATE.yaml", "README.md"}
 # must be token-free so both the exporter and the guard agree.
 TOKEN_CONTENT_EXEMPT = {check_public.GUARD_REL_PATH}
 
-# The public .gitignore written into <dest>. Kept in sync with docs/ and the
-# overlay-ignoring lines appended to the combined repo's own .gitignore.
-PUBLIC_GITIGNORE = """\
-# Python
-__pycache__/
-*.pyc
-.venv/
-# Scratch
-tmp/
-# Local machine config (copy config.example.yaml -> config.yaml and edit)
-config.yaml
-# Private overlay (personal data mounts here; never committed to the public repo).
-# ``private/`` is the canonical mount; ``personal/`` is the legacy name.
-private/
-personal/
-# Overlay-provided private skill routing (present only when overlay is mounted)
-.cursor/rules/private-skills.mdc
-# Per-skill private references (candidate-specific skill content; never shipped)
-.agents/skills/*/references_private/
-# Optional git-ignored personal token lists consumed by the leak guard
-private/leak_tokens.txt
-personal/leak_tokens.txt
-# Private products (present only if you work in-place in a combined checkout).
-# Anchored to the repo root so they never match the tracked examples/ dataset
-# (e.g. examples/applications/**, examples/templates/reference.example.docx).
-/applications/
-/interviews/
-/templates/
-/.agents/inputs/
-/.agents/skills/coding-interview/
-"""
+# The public .gitignore shipped into <dest> is this repo's OWN tracked ``.gitignore``
+# — a single source of truth, so the exported mirror and this checkout can never
+# drift. (The tracked file already contains only public/overlay-continuity rules.)
+GITIGNORE_REL = ".gitignore"
 
 
 def _deny_reason(rel: str, tokens: list[str]) -> str | None:
@@ -316,7 +289,8 @@ def export(dest: Path, git_init: bool, force: bool) -> int:
     for rel_dir in ALLOWLIST_DIRS:
         _copy_tree(rel_dir, dest, copied, skipped, tokens)
 
-    (dest / ".gitignore").write_text(PUBLIC_GITIGNORE, encoding="utf-8")
+    (dest / ".gitignore").write_text(
+        (REPO_ROOT / GITIGNORE_REL).read_text(encoding="utf-8"), encoding="utf-8")
 
     symlinks = _regenerate_symlinks(dest)
 

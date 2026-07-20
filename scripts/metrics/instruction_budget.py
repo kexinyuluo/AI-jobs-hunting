@@ -3,8 +3,9 @@
 
 Measures every ``AGENTS.md``, ``.agents/skills/*/SKILL.md``, ``LESSONS.md``, and
 ``reference.md`` and reports lines / bytes / estimated tokens (bytes / 4). This
-is the "instruction_file_token_budget ... static anti-bloat guard" from
-``docs/design/harness-engineering-and-repo-evolution/05-harness-engineering-methodology.md``
+is the "instruction_file_token_budget ... static anti-bloat guard" from the
+maintainer-only, overlay-mounted design doc
+``private/docs/harness-engineering-and-repo-evolution/05-harness-engineering-methodology.md``
 §4, and the file-size budget gate from §3 ("Self-evolution quality gates", gate
 #6: "Pre-commit cap on each SKILL.md/LESSONS.md; exceeding forces a
 consolidation pass, not an exception").

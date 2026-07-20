@@ -1,7 +1,8 @@
 """Shared helpers for the gardener memory-hygiene routines.
 
 The gardener is periodic memory hygiene for this repo's agent-memory zones
-(design doc ``docs/design/harness-engineering-and-repo-evolution/03-folder-structure-and-memory.md``
+(maintainer-only design doc, overlay-mounted and absent in contributor checkouts:
+``private/docs/harness-engineering-and-repo-evolution/03-folder-structure-and-memory.md``
 §5). Every routine defaults to DRY-RUN, prints a plan/diff, and NEVER deletes —
 stale items are MOVED to an ``archive/`` sibling (soft-delete). ``--apply`` is an
 explicit opt-in.
@@ -30,7 +31,7 @@ if str(_SHARED) not in sys.path:
 import config  # noqa: E402  (import after sys.path bootstrap, by design)
 
 DESIGN_DOC = (
-    "docs/design/harness-engineering-and-repo-evolution/"
+    "private/docs/harness-engineering-and-repo-evolution/"
     "03-folder-structure-and-memory.md"
 )
 

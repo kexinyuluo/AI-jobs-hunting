@@ -41,11 +41,27 @@ STRICT_ROOT_PREFIXES = (
     "scripts/maintenance/", "scripts/metrics/", "scripts/publish/",
     "hooks/", "docs/", ".claude-plugin/", "examples/",
 )
-# Runtime data / overlay / scratch trees — never verified (illustrative or absent
-# in a public checkout).
-SKIP_PREFIXES = ("applications/", "private/", "personal/", "interviews/", "tmp/",
-                 ".agents/inputs/", ".git/", ".venv/")
+# Runtime data / scratch trees — never verified (illustrative or absent in a public
+# checkout). The overlay's DATA/product trees are illustrative too, so their
+# ``private/`` forms are skipped exactly like the bare ones. ``private/`` is NOT
+# blanket-skipped: genuine overlay TOOLKIT paths (the maintainer-only design docs
+# under ``private/docs/``) fall through to OVERLAY_PREFIX and are verified ONLY when
+# the overlay is mounted (otherwise counted "overlay-skipped" — a clean pass for
+# contributors).
+SKIP_PREFIXES = ("applications/", "personal/", "interviews/", "tmp/",
+                 ".agents/inputs/", ".git/", ".venv/",
+                 "private/applications/", "private/interviews/",
+                 "private/job-search/", "private/personal/", "private/tmp/")
 SKILLS_ROOT = ".agents/skills"
+
+# Backticked refs into the private overlay (maintainer-only design docs, real
+# products). Present only when the overlay is mounted at ``private/``.
+OVERLAY_PREFIX = "private/"
+
+
+def _overlay_mounted() -> bool:
+    """True when the private overlay is mounted (a contributor checkout has none)."""
+    return (C.REPO_ROOT / "private").is_dir()
 
 
 def _is_checkable(token: str) -> bool:
@@ -94,12 +110,19 @@ def _resolves(token: str, bases: list[Path]) -> bool:
     return any((base / rel).exists() for base in bases)  # exists() follows symlinks
 
 
-def check_references() -> list[dict]:
+def check_references() -> tuple[list[dict], int]:
     """Flag only GENUINE breaks: a repo-root-anchored toolkit path that resolves
     under no base. Skill-relative and documented-optional refs resolve or are
     treated as relative (not broken) — see STRICT_ROOT_PREFIXES / _bases_for.
+
+    ``private/`` overlay refs (maintainer-only design docs) are checked ONLY when
+    the overlay is mounted; without it they are counted as "overlay-skipped" so a
+    contributor checkout (no ``private/``) still passes clean. Returns
+    ``(broken, overlay_skipped)``.
     """
     broken: list[dict] = []
+    overlay_skipped = 0
+    overlay_mounted = _overlay_mounted()
     for f in _instruction_files():
         bases = _bases_for(f)
         seen: set[str] = set()
@@ -109,11 +132,17 @@ def check_references() -> list[dict]:
                 if token in seen or not _is_checkable(token):
                     continue
                 seen.add(token)
+                if token.startswith(OVERLAY_PREFIX):
+                    if not overlay_mounted:
+                        overlay_skipped += 1
+                    elif not _resolves(token, bases):
+                        broken.append({"file": C.rel(f), "line": lineno, "ref": token})
+                    continue
                 if _resolves(token, bases):
                     continue
                 if token.startswith(STRICT_ROOT_PREFIXES):
                     broken.append({"file": C.rel(f), "line": lineno, "ref": token})
-    return broken
+    return broken, overlay_skipped
 
 
 def check_symlinks() -> list[dict]:
@@ -139,11 +168,13 @@ def check_vendor() -> tuple[int, str]:
 
 def run() -> int:
     C.print_header("verify-links (report-only)", apply=False)
-    broken = check_references()
+    broken, overlay_skipped = check_references()
     bad_links = check_symlinks()
     vendor_rc, vendor_msg = check_vendor()
 
     print(f"  backticked toolkit refs checked across {len(_instruction_files())} files")
+    if overlay_skipped:
+        print(f"  overlay-skipped refs: {overlay_skipped} (private/ overlay not mounted)")
     if broken:
         print(f"  BROKEN references: {len(broken)}")
         for b in broken:

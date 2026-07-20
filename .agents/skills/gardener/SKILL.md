@@ -7,7 +7,8 @@ description: Periodic memory hygiene for the toolkit's agent-memory zones — ex
 # Gardener — Memory Hygiene
 
 The gardener keeps this repo's **agent-memory zones** from growing without bound
-(design doc `docs/design/harness-engineering-and-repo-evolution/03-folder-structure-and-memory.md`
+(maintainer-only design doc — overlay-mounted, absent in contributor checkouts:
+`private/docs/harness-engineering-and-repo-evolution/03-folder-structure-and-memory.md`
 §5, and the "Memory Map" in `AGENTS.md`). Memory has promotion (MEMORY→LESSONS→SKILL)
 but the gardener supplies the missing half: **forgetting** — TTL expiry, log pruning,
 and staleness/duplicate flagging.

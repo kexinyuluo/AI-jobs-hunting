@@ -2,8 +2,9 @@
 
 Operating manual for the eval scaffolding that keeps this repo's real product — the
 `SKILL.md` / `LESSONS.md` corpus — from silently degrading. This is **Phase 2 (Evals)** of
-the harness-engineering roadmap; the design and statistics live in
-[`docs/design/harness-engineering-and-repo-evolution/05-harness-engineering-methodology.md`](../docs/design/harness-engineering-and-repo-evolution/05-harness-engineering-methodology.md)
+the harness-engineering roadmap; the design and statistics live in the maintainer-only,
+overlay-mounted design doc (absent in contributor checkouts)
+[`private/docs/harness-engineering-and-repo-evolution/05-harness-engineering-methodology.md`](../private/docs/harness-engineering-and-repo-evolution/05-harness-engineering-methodology.md)
 (§1 skill-creator harness, §2 matched-pair A/B, Phase 2/3 plan, the quality-gates checklist).
 
 ## Purpose
@@ -134,6 +135,7 @@ evals/
 ```
 
 All canaries are **fully public**: only the "Jordan Rivers" fixture identity + fictional or
-real-public companies with fictional postings. Zero personal data (the leak guard must stay at
-exactly 3 violations, all under `docs/design/**`). The private `coding-interview` skill is
+real-public companies with fictional postings. Zero personal data (the leak guard must be
+completely clean — `scripts/publish/check_public.py` exits 0 with zero findings in this repo;
+ANY finding is a regression). The private `coding-interview` skill is
 deliberately out of scope — evals must be runnable on a public-only checkout.

@@ -2,9 +2,11 @@
 """Zero-platform metrics collector for Claude Code hooks (P3 measurement).
 
 Reads a hook JSON payload from stdin and appends ONE JSON line to
-``logs/metrics.jsonl``. Wired from ``.claude/settings.json`` (SessionStart,
-PostToolUse, Stop). See
-``docs/design/harness-engineering-and-repo-evolution/05-harness-engineering-methodology.md``
+``logs/metrics.jsonl``. Metrics are OPT-IN: wire these hooks (SessionStart,
+PostToolUse, Stop) from your local ``.claude/settings.local.json`` (see
+``docs/METRICS.md``); they are intentionally NOT tracked so contributors never
+run them by default. See the maintainer-only design doc
+``private/docs/harness-engineering-and-repo-evolution/05-harness-engineering-methodology.md``
 §4 ("Metric set + logging design") for the metric set and rationale.
 
 Modes (``argv[1]``):
