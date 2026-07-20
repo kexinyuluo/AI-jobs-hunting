@@ -74,7 +74,7 @@ frontmatter:
 
 - **PUBLIC skills** (SKILL.md + scripts are published; their generated PRODUCTS stay private):
   `ask-me-anything`, `job-search`, `resume-writer`, `application-tracker`,
-  `behavioral-interview-prep`, `company-research`, `gardener`.
+  `behavioral-interview-prep`, `company-research`, `outlook-email-assistant`, `gardener`.
 - **PRIVATE skill**: `coding-interview` — the ENTIRE skill (SKILL.md + product) lives only in
   the private overlay and never ships in the public repo.
 
@@ -160,6 +160,7 @@ example) and `config.discoveries_dir()` are support folders, not applications.
 | `.agents/skills/application-tracker/` | PUBLIC skill for application status and pipeline management |
 | `.agents/skills/behavioral-interview-prep/` | PUBLIC skill for behavioral interview story banks and STAR answers |
 | `.agents/skills/company-research/` | PUBLIC skill for researching a company + role for interviews (product, size, teams, values, stage, comp, WLB, ratings, visa) and drafting a hiring-manager/engineer question bank under `interviews/company-specific/<company>/company-info/` |
+| `.agents/skills/outlook-email-assistant/` | PUBLIC draft-only personal Outlook workflow: reads mailbox messages, grounds suggested replies in the private job-hunt data, and creates Outlook drafts through Microsoft Graph. OAuth tokens stay in the OS keyring; the skill has no send capability. |
 | `.claude/skills/`, `.cursor/skills/` | Tool-compatibility symlinks to `.agents/skills` (for agents that look in their own skill directories) |
 | `.agents/MEMORY.md` | Cross-session hypotheses and learnings (gitignored) |
 | `tmp/` | Gitignored scratch space for **all** disposable, ad-hoc work — one-off ATS/API probes, fetched web artifacts, sanity checks — organized into purpose-named subfolders (`tmp/ats_scripts/`, `tmp/web_artifacts/`, `tmp/scratch/`). Never committed; created on demand; nothing in the toolkit may depend on it. See "Scratch & Temporary Files" |
@@ -214,6 +215,9 @@ env var).
 # (statuses: drafted | applied | in_progress | rejected | ignored)
 .venv/bin/python .agents/skills/application-tracker/scripts/status.py --update <slug> applied
 
+# Personal Outlook (draft-only; user sends manually; see skill for login/inbox/draft commands)
+.venv/bin/python .agents/skills/outlook-email-assistant/scripts/outlook_email.py doctor
+
 # Extract content from a DOCX resume (utility)
 .venv/bin/python .agents/skills/resume-writer/scripts/extract.py path/to/resume.docx
 
@@ -241,6 +245,7 @@ pip install -r requirements.txt
    - `.agents/skills/application-tracker/SKILL.md` for status management
    - `.agents/skills/behavioral-interview-prep/SKILL.md` for behavioral interview prep
    - `.agents/skills/company-research/SKILL.md` for researching a company/role for interviews and building a question bank
+   - `.agents/skills/outlook-email-assistant/SKILL.md` for reading personal Outlook mail and creating repository-grounded reply drafts
    - (The private `coding-interview` skill, when the overlay is mounted, appears at `.agents/skills/coding-interview/` via the bootstrap symlink.)
 3. Read `.agents/MEMORY.md` (if it exists) for cross-session context.
 4. Read the candidate profile (`config.profile_md_path()`) before tailoring — this is the source of truth.
@@ -382,6 +387,7 @@ repo-wide cap — the skills reference it rather than restating it.
   mentions it). JD skills in none of the lists must be surfaced to the user for categorization
   at the end of a tailoring run, never added silently.
 - **Honesty over optimization**: if the user's experience is a poor match for a role, say so clearly.
+- **Email is draft-only**: the Outlook assistant may read mail and create/update messages only while Microsoft Graph confirms `isDraft: true`. Never request `Mail.Send`, expose a send command/tool/endpoint, or send email on the user's behalf. The user sends manually in Outlook.
 - **Profile is user-owned**: ask before modifying the candidate profile (`config.profile_md_path()`).
 - **Eval-gated harness edits**: any change to a skill's `SKILL.md`/`LESSONS.md`/`reference.md` must pass that skill's canaries (`evals/<skill>/canaries.yaml`) before merge, with no large efficiency regression vs baseline; record runs per `evals/README.md` (model-pinned; re-baseline on model upgrades). Harness self-edits are delta-only — never full-file rewrites, and consolidation never deletes a domain edge case.
 
