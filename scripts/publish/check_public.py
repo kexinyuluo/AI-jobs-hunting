@@ -1,10 +1,11 @@
 """Publish-time leak guard: verify a checkout is safe to publish PUBLICLY.
 
-This repo is (today) a COMBINED repo: the public toolkit and the owner's private
-personal data live side by side. It will later be split into a PUBLIC toolkit repo
-plus a PRIVATE overlay mounted at a git-ignored ``private/`` path (the legacy name
-``personal/`` is still honored). This script gates the PUBLIC repo: run it in CI
-(and as a pre-push hook) so a publish can never leak private material.
+This is the PUBLIC toolkit repo; personal data lives in a separate PRIVATE
+overlay repo mounted at the git-ignored ``private/`` path (the legacy name
+``personal/`` is still honored), so the TRACKED tree must always be publishable.
+This script gates that invariant: it runs in CI (blocking), in the pre-push
+hook, and by hand — zero findings is the steady state; ANY finding is a
+regression.
 
 It scans a set of files (TRACKED git files by default, or every file under a plain
 directory tree — see ``scan()``) and FAILS (exit 1) if any of these appear,

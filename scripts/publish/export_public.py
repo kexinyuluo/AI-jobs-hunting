@@ -1,12 +1,14 @@
 """Allowlist-based exporter: produce a clean PUBLIC checkout of this toolkit.
 
-This repo is (today) a COMBINED repo: the public toolkit and the owner's private
-personal data live side by side. This exporter copies ONLY known-public paths (an
-explicit ALLOWLIST) into a fresh destination directory, applies a denylist to
-scrub anything personal that slipped inside an allowlisted tree, writes a public
-``.gitignore``, regenerates the ``.claude/skills`` / ``.cursor/skills`` compat
-symlinks for the PUBLIC skills, and (optionally) ``git init`` + runs the leak
-guard (``check_public.py``) before committing.
+This exporter seeded the public toolkit repo from the pre-split combined repo
+(fresh, PII-free history) and remains useful post-split: the leak-guard test
+suite drives it end-to-end, and it can produce a sanitized copy of any checkout
+(e.g. one that still holds an in-place overlay). It copies ONLY known-public
+paths (an explicit ALLOWLIST) into a fresh destination directory, applies a
+denylist to scrub anything personal that slipped inside an allowlisted tree,
+ships this repo's tracked ``.gitignore``, regenerates the ``.claude/skills`` /
+``.cursor/skills`` compat symlinks for the PUBLIC skills, and (optionally)
+``git init`` + runs the leak guard (``check_public.py``) before committing.
 
 Design rules:
   * The ALLOWLIST wins: nothing is ever copied unless it lives under an
