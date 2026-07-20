@@ -14,8 +14,8 @@ logs/
 # ``private/`` is the canonical mount; ``personal/`` is the legacy name.
 private/
 personal/
-# Overlay-provided private skill routing (present only when overlay is mounted)
-.cursor/rules/private-skills.mdc
+# Agent scratch memory (personal cross-session notes; see AGENTS.md "Memory Map")
+.agents/MEMORY.md
 # coding-interview skill symlink into the mounted overlay (private/skills/…). The
 # anchored trailing-slash rule at the bottom matches an in-place directory; this
 # unslashed rule matches the overlay symlink (git treats a symlink as a file).

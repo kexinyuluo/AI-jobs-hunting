@@ -25,7 +25,7 @@ Use this skill when the user asks to:
      `applications/<status>/<slug>/` folders, and `notes.md` files — additional real context.
    - Everything here describes work the user actually did; it is a valid source of truth
      alongside the profile. It is NOT license to invent — only to surface real detail.
-4. Read `.cursor/MEMORY.md` (if it exists) for cross-session learnings.
+4. Read `.agents/MEMORY.md` (if it exists) for cross-session learnings.
 5. Read this skill's `LESSONS.md` for accumulated operational knowledge.
    - **Personalization / private overrides:** if this skill folder has a
      `references_private/` directory, read every file in it — those candidate-specific

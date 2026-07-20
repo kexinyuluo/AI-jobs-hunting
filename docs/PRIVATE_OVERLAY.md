@@ -10,7 +10,7 @@ real person or a real job hunt stays **private**. It ships as two layers:
 2. **PRIVATE overlay repo** — its **own git repo**, synced to a private GitHub
    remote, holding your real data: profile, resume baseline, reference DOCX,
    applications, interviews, the private `coding-interview` skill, `config.yaml`,
-   `.cursor/rules/private-skills.mdc`, and your real job-search profile YAML(s).
+   and your real job-search profile YAML(s).
 
 The overlay **mounts into a git-ignored `private/` directory** inside a public
 checkout (**`private/` is the canonical mount; `personal/` is kept as a legacy
@@ -21,7 +21,7 @@ git-ignored in the public repo, your real data is never committed to the public 
 ## How the layering works
 
 - The exported public repo's `.gitignore` ignores `private/`, `config.yaml`,
-  `.cursor/rules/private-skills.mdc`, every per-skill
+  every per-skill
   `.agents/skills/*/references_private/` folder, and the private product folders
   (`applications/`, `interviews/`, `templates/`, `.agents/inputs/`,
   `.agents/skills/coding-interview/`). So you can work **in place** in a public
@@ -40,11 +40,10 @@ git-ignored in the public repo, your real data is never committed to the public 
   identity; it derives its personal-token set from `config.yaml`, an optional
   `private/leak_tokens.txt`, and the `JOBHUNT_PERSONAL_TOKENS` env var, and scans both
   text and `.docx`/`.pdf` content.
-- The public skill router `.cursor/rules/shared-skills.mdc` (tracked) lists only
-  the public skills. The private `coding-interview` skill is registered by
-  `.cursor/rules/private-skills.mdc`, which the overlay supplies (see the template
-  at `examples/templates/private-skills.mdc`) and which is git-ignored in the
-  public repo — so it is discoverable **only** when the overlay is mounted.
+- Skills are discovered by listing `.agents/skills/` (see `AGENTS.md`). The private
+  `coding-interview` skill appears there via a git-ignored symlink that
+  `scripts/bootstrap_overlay.py` creates when the overlay is mounted — so it is
+  discoverable **only** when the overlay is mounted.
 - `config.yaml`'s `paths.*` are resolved **relative to the config file's
   directory**, so you can point them at `private/…` (or anywhere) and swap the
   fake example candidate for your real one without editing any tooling.
@@ -77,11 +76,9 @@ my-jobhunt-overlay/            # private git repo (mounts at ./private/)
 │   ├── coding-interview/      # the PRIVATE skill (SKILL.md + products)
 │   └── references_private/    # per public skill: candidate-specific notes/examples,
 │                              # symlinked/copied into .agents/skills/<skill>/references_private/
-├── job-search-profiles/
-│   ├── my-default.yaml        # your real search profile(s)
-│   └── my-smb.yaml
-└── cursor-rules/
-    └── private-skills.mdc     # copied from examples/templates/private-skills.mdc
+└── job-search-profiles/
+    ├── my-default.yaml        # your real search profile(s)
+    └── my-smb.yaml
 ```
 
 `private/leak_tokens.txt` is one token per line (blank / `#` lines ignored) — put
@@ -99,7 +96,7 @@ checkout root:
 
 ```bash
 # 1. Scaffold the overlay tree (directly at the git-ignored ./private/ mount):
-mkdir -p private/{profile,templates,job-search,job-search-profiles,cursor-rules,interviews}
+mkdir -p private/{profile,templates,job-search,job-search-profiles,interviews}
 mkdir -p private/applications/{1_discoveries/{current,archive},2_ignored,3_rejected,4_in_progress,5_applied,6_drafted}
 mkdir -p private/skills
 
@@ -107,7 +104,6 @@ mkdir -p private/skills
 cp examples/profile/profile.example.md        private/profile/profile.md
 cp examples/profile/baseline.example.yaml     private/profile/baseline.yaml
 cp examples/templates/reference.example.docx  private/templates/reference.docx
-cp examples/templates/private-skills.mdc      private/cursor-rules/private-skills.mdc
 cp .agents/skills/job-search/profiles/_TEMPLATE.yaml private/job-search-profiles/my-default.yaml
 
 # 3. Arm the leak guard with your identity (one token per line: name variants,
@@ -190,14 +186,12 @@ empty until you have content (e.g. your own private interview-prep skill).
    With `private/` mounted it symlinks (skipping any that already point correctly):
 
    - `.agents/skills/coding-interview` → `private/skills/coding-interview` — the private skill;
-   - `.cursor/rules/private-skills.mdc` → `private/cursor-rules/private-skills.mdc` — its router,
-     which the overlay seeds from `examples/templates/private-skills.mdc`;
    - one link per `private/job-search-profiles/*.yaml` into
      `.agents/skills/job-search/profiles/` — then point `config.job_search.default_profile` at one.
 
    It **always** installs `hooks/pre-commit` and `hooks/pre-push` into `.git/hooks`
    (never clobbering a foreign hook — it warns instead), and re-running is a safe
-   no-op. All of `.agents/skills/coding-interview/`, `.cursor/rules/private-skills.mdc`,
+   no-op. Both `.agents/skills/coding-interview/`
    and any personal `*.yaml` profiles are git-ignored in the public repo, so the private
    skill and your profiles stay out of public history while remaining discoverable
    whenever the overlay is mounted. (The `.agents/skills/job-search/profiles/` folder keeps
