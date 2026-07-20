@@ -97,6 +97,7 @@ validation, `check.py`, no-fabrication rules) run identically in both modes.
 | **+ Stage 1 (measured 2026-07-20, post-merge)** | 158k | 343k | **~502k** | **+15%** |
 | **Pinned-scenario reference (Stage-1 state, measured 2026-07-20, v1.1)** | 131k | 354k | **~485k** | — (new comparison base) |
 | **+ Stage 2 (measured 2026-07-20, pinned scenario, 2-draft normalized)** | 120k | ~316k | **~436k** | **−10% vs pinned reference** |
+| **+ Stage 3 (measured 2026-07-20, isolated benchmark area, token_saving)** | 121k | 331k | **~453k** | **−7% vs pinned reference** (both drafts stretch-fit + a since-fixed baseline data bug cost each a render cycle — see `evals/results/stage3-benchmark-20260720.md`) |
 
 **Stage 1 measured note (2026-07-20).** The mechanisms all landed: the widening journey
 that cost the baseline 7 full fetches ran as snapshot refilters (3 fetches + 7 zero-network
