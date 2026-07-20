@@ -218,11 +218,24 @@ Common overrides (flags beat profile values):
 
 # re-search companies logged within the last 7 days (still skips blacklist)
 ... --profile example --include-recent
+
+# RE-FILTER the last fetch instead of re-fetching: widen the window, change top-k,
+# or re-emit JSON in seconds (fetch-affecting flags like --stage/--aggregators refused)
+... --profile example --refilter latest --max-age-days 7 --top-k 60
 ```
 
-The script prints the ranked table and writes it to the configured discoveries dir
-(`config.discoveries_dir()`; `<discoveries_dir>/<YYYYMMDD>-<profile>.md`). A
-stage-1 market-scan run scans ~12k postings (100+ boards + keyless aggregators +
+Default stdout is a ~5-line run summary + a compact top-K table (rank, company, title,
+score, level, age, visa, URL) — **read that table; do not `cat` the discoveries file**.
+The full Markdown report is still written to `<discoveries_dir>/<YYYYMMDD>-<profile>.md`
+(`config.discoveries_dir()`); pass `--print-full` for the old full-report stdout dump.
+Every fetch also writes a pre-filter snapshot to `tmp/search_cache/` (gitignored). When
+widening the freshness window, changing top-k, or re-emitting JSON **after** a search,
+run `--refilter latest` (reuses that snapshot, anchors posting age to its fetch time,
+refuses snapshots >6h old unless `--allow-stale`) instead of re-running the fetch. Pull
+one JSON field rather than dumping records, e.g. the top 5 URLs:
+`... --refilter latest --json-out /tmp/m.json && python -c "import json;print(*[r['url'] for r in json.load(open('/tmp/m.json'))][:5],sep='\n')"`
+
+A stage-1 market-scan run scans ~12k postings (100+ boards + keyless aggregators +
 JobSpy Indeed/Google) in ~15–20s; stage 2 adds LinkedIn + keyed APIs and is slower.
 
 ## LinkedIn / Indeed Coverage (the two stages)
@@ -409,7 +422,7 @@ employers with sponsorship history:
 | `companies.yaml` | Canonical company registry — identity, ATS poll config, tags (incl. the `ai-lab`/`ai-infra`/`ai-native` AI-native family), blacklist |
 | `config.company_levels_path()` | Dated reusable company level/YOE/base/total-comp reference; defaults beside the configured profile and stays separate from the identity registry |
 | `scripts/registry.py` | Registry loader + resolver (canonical name, blacklist, poll targets, `tagged_keys` for the AI-native set) |
-| `scripts/search_jobs.py` | Main pipeline (two-stage fetch → filter → score → rank → output); `--stage`, `--ai-native-only`, `--no-jobspy`, `--max-per-company`, `--top-k` |
+| `scripts/search_jobs.py` | Main pipeline (two-stage fetch → filter → score → rank → output); `--stage`, `--ai-native-only`, `--no-jobspy`, `--max-per-company`, `--top-k`, `--refilter latest`, `--print-full` |
 | `scripts/sources.py` | Company ATS fetchers (Greenhouse / Ashby / Lever / SmartRecruiters / Workday / Amazon / Apple / Meta) |
 | `scripts/aggregators.py` | Cross-company sources (Jobicy/RemoteOK/Muse/Arbeitnow keyless; Adzuna/JSearch keyed) + JobSpy (site-tiered, radius + multi-location); `build_jobspy_tasks`, `keyed_available` |
 | `scripts/visa.py` | Sponsorship phrase detection |
