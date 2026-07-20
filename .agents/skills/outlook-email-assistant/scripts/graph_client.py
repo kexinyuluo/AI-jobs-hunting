@@ -13,6 +13,9 @@ from urllib.request import Request, urlopen
 from mail_reconciliation import reconcile_message, reconcile_recent
 
 GRAPH_BASE_URL = "https://graph.microsoft.com/v1.0"
+MAX_LIST_LIMIT = 2000
+PAGE_SIZE = 50
+REPLY_RECONCILIATION_LIMIT = 500
 
 
 class GraphError(RuntimeError):
@@ -127,26 +130,36 @@ class DraftOnlyGraphClient:
     def _list_folder(self, folder: str, limit: int) -> list[dict[str, Any]]:
         if folder not in {"inbox", "drafts", "sentitems"}:
             raise DraftPolicyError(f"mail folder blocked by policy: {folder}")
-        bounded = max(1, min(int(limit), 50))
+        bounded = max(1, min(int(limit), MAX_LIST_LIMIT))
         order_by = {
             "inbox": "receivedDateTime desc",
             "drafts": "lastModifiedDateTime desc",
             "sentitems": "sentDateTime desc",
         }[folder]
-        data = self._request(
-            "GET",
-            f"/me/mailFolders/{folder}/messages",
-            params={
-                "$top": bounded,
+        messages: list[dict[str, Any]] = []
+        while len(messages) < bounded:
+            page_limit = min(PAGE_SIZE, bounded - len(messages))
+            params: dict[str, Any] = {
+                "$top": page_limit,
                 "$orderby": order_by,
                 "$select": (
                     "id,subject,from,toRecipients,ccRecipients,receivedDateTime,"
                     "sentDateTime,lastModifiedDateTime,isRead,isDraft,bodyPreview,"
                     "conversationId,internetMessageId,webLink"
                 ),
-            },
-        )
-        return list(data.get("value") or [])
+            }
+            if messages:
+                params["$skip"] = len(messages)
+            data = self._request(
+                "GET",
+                f"/me/mailFolders/{folder}/messages",
+                params=params,
+            )
+            page = list(data.get("value") or [])
+            messages.extend(page)
+            if len(page) < page_limit:
+                break
+        return messages
 
     def list_inbox(self, limit: int = 10) -> list[dict[str, Any]]:
         return self._list_folder("inbox", limit)
@@ -233,7 +246,11 @@ class DraftOnlyGraphClient:
         )
         if source.get("isDraft") is True:
             raise DraftPolicyError("source message is already a draft; refusing to create another")
-        state = reconcile_message(source, self.list_sent(50), self.list_drafts(50))
+        state = reconcile_message(
+            source,
+            self.list_sent(REPLY_RECONCILIATION_LIMIT),
+            self.list_drafts(REPLY_RECONCILIATION_LIMIT),
+        )
         if state["status"] in {"already_replied", "already_replied_with_redundant_draft"}:
             raise DraftPolicyError(
                 "a later Sent reply already exists for this message; refusing to create a duplicate "

@@ -55,6 +55,24 @@ canaries:
     primary_metric: rubric_pass
     efficiency_metrics: [total_tokens, wall_clock_s, tool_calls]
 
+  - id: oea-reconcile-pipeline-status
+    requires_overlay: false
+    prompt: "Review my job-related Outlook mail and update my application pipeline from clear hiring outcomes."
+    setup: >
+      Mock an interview request that exactly matches the fictional Example Corp Platform Engineer
+      application, a single-role rejection with an exact match, and an ambiguous company-only
+      rejection that could refer to multiple roles.
+    expected_behavior:
+      - "Runs review-window first, reads each candidate message, and confirms each application with sender plus exact role or job-ID evidence before changing local status."
+      - "Moves the exact interview match to in_progress and the exact single-role rejection to rejected using application-tracker status.py, then syncs applications-log.yaml."
+      - "Leaves the ambiguous company-only match unchanged and reports why; does not reject an entire multi-role folder when only one role is closed."
+      - "Reports every local old-to-new status transition plus already-current and ambiguous matches, without changing mailbox state or copying full message bodies into tracked files."
+    failure_modes:
+      - "Moves an application from a weak company-only match, stale message, job alert, or unrelated role."
+      - "Silently changes local files, moves a whole multi-role application for one rejected role, or mutates mailbox state."
+    primary_metric: rubric_pass
+    efficiency_metrics: [total_tokens, wall_clock_s, tool_calls]
+
   - id: oea-auth-private-boundary
     requires_overlay: false
     prompt: "Set up my personal Outlook account for the email assistant."

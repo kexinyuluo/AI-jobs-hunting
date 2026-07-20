@@ -1,7 +1,7 @@
 ---
 name: outlook-email-assistant
 visibility: public
-description: Read a personal Microsoft Outlook mailbox, connect recruiter or hiring-team messages to job applications in this repository, draft evidence-grounded replies, and save them as Outlook drafts through Microsoft Graph. Use when the user asks to review, summarize, prioritize, or reply to Outlook email, especially for recruiters, interviews, applications, scheduling, follow-ups, or offer communication. This skill is permanently draft-only and must never send email.
+description: Read a personal Microsoft Outlook mailbox, connect recruiter or hiring-team messages to job applications in this repository, reconcile evidence-backed application status changes, draft grounded replies, and save them as Outlook drafts through Microsoft Graph. Use when the user asks to review, summarize, prioritize, or reply to Outlook email, or update their job pipeline from recruiter or hiring-team messages. This skill is permanently draft-only and must never send email.
 ---
 
 # Outlook Email Assistant
@@ -25,8 +25,8 @@ message in Outlook's Drafts folder so the user remains the only sender.
 - Use only `scripts/outlook_email.py`; do not call arbitrary Graph URLs with `curl` or another tool.
 - Create or update a message only when Graph returns `isDraft: true`. A missing/false value is a
   hard failure.
-- Do not mark mail read, delete/move messages, change categories, or modify application status as
-  a side effect of drafting.
+- Do not mark mail read, delete/move messages, or change categories. Keep pipeline reconciliation
+  separate from drafting and apply the evidence gates below before changing application status.
 - Do not persist message bodies, OAuth tokens, or generated drafts in the public repository.
 - Never claim relocation, work authorization, availability, compensation, or another material fact
   unless the profile, matched application, private references, or the user confirms it.
@@ -62,6 +62,38 @@ Then authenticate:
 The script prints Microsoft's device-login URL and code. The user signs in directly with
 Microsoft; never ask them to paste credentials into chat. OAuth refresh state is stored only in
 the OS keyring and is tied to the configured mailbox.
+
+## Pipeline Status Reconciliation
+
+During a requested job-related mailbox review, automatically reconcile clear application outcomes
+with the repository. Treat this as a separate local workflow from drafting:
+
+1. Run `review-window --limit 50`, then widen the read-only scan with `inbox --limit 500` when the
+   user asks for a mailbox-wide status review. Expand up to `--limit 2000` only when a named older
+   thread or outcome is still missing.
+2. Consider only explicit hiring signals: an application receipt can move `drafted` to `applied`;
+   an interview/screen request or confirmed next round can move an application to `in_progress`;
+   and an explicit rejection or closed role can move it to `rejected`.
+3. Read the exact message and run `match-application` using company, exact role or job ID, subject,
+   and sender. Require one unambiguous match. A company name alone, a low score, a job alert, or a
+   stale outcome for another role is not enough.
+4. For a multi-role application, do not move the whole folder to `rejected` unless the evidence
+   closes every tracked role. Record a concise dated outcome in `notes.md` and leave the folder in
+   place when only one role was rejected. Any confirmed active interview may move the shared folder
+   to `in_progress`.
+5. Make a confirmed transition only through the application-tracker command:
+
+   ```bash
+   .venv/bin/python .agents/skills/application-tracker/scripts/status.py \
+     --update <slug> <applied|in_progress|rejected>
+   ```
+
+6. After all moves, run `status.py --sync-log`. Report every local change with application slug,
+   previous status, new status, and the message evidence. Also report ambiguous or already-current
+   matches that were intentionally left unchanged.
+
+Never copy full mailbox bodies into application files. Save only the minimum outcome note needed
+for pipeline traceability, and keep personal mailbox details out of the public repository.
 
 ## Drafting Workflow
 
