@@ -1,0 +1,62 @@
+# Canonical baseline resume for the fictional example persona "Jordan Rivers".
+#
+# This is the shipped, public example baseline — a fully invented transcription
+# used to demonstrate the resume-writer schema. It is the starting point for
+# every tailored resume:
+#   1. Copy it to <applications_root>/6_drafted/<slug>/source/tailored.yaml
+#   2. Make targeted edits per the resume-writer skill rules
+#   3. check.py validates the result against this baseline + the profile
+#
+# '**text**' renders as bold. Update this file ONLY when the master resume changes.
+
+name: "Jordan Rivers"
+contact_line: "City, ST • jordan.rivers@example.com • linkedin.com/in/jordanrivers"
+
+summary_bullets:
+  - "Senior software engineer with 8+ years building **scalable backend services** and distributed systems in production"
+  - "Specialize in **cloud-native microservices** on AWS and Kubernetes, with a focus on reliability, performance, and cost"
+  - "Partner closely with product and SRE teams to ship **well-tested APIs, automation, and observability** at scale"
+
+education_line: "B.S. in Computer Science, Lakemont University, 2015"
+
+skills:
+  - label: "Programming Languages"
+    items: "Python, Java, Go, JavaScript, TypeScript, SQL, Bash"
+  - label: "Skills"
+    items: "AWS, Docker, Kubernetes, Terraform, PostgreSQL, Redis, gRPC, REST APIs, microservices, distributed systems, event-driven architecture, CI/CD, Git, observability"
+
+employer:
+  company: "Northwind Systems"
+  role: "Senior Software Engineer"
+  dates: "2016 – Present"
+  location: "City, ST"
+  projects:
+    - title: "Payments platform microservices migration"
+      bullets:
+        - "Led migration of a **monolithic payments service** into independently deployable microservices, cutting deploy time from hours to minutes and enabling isolated, low-risk releases"
+        - "Designed **idempotent transaction workflows** and retry semantics with exactly-once settlement guarantees that reduced failed-payment incidents by **40%** during peak traffic"
+        - "Introduced **contract tests and canary releases** so teams could ship independently without cross-team coordination, catching breaking changes before they reached production"
+
+    - title: "Real-time notifications and event pipeline"
+      bullets:
+        - "Built an **event-driven notifications pipeline** processing 50M+ daily events with at-least-once delivery guarantees and idempotent, replayable consumers"
+        - "Implemented **backpressure and dead-letter queues** to keep the system stable during downstream outages and traffic spikes, with automated replay of failed messages"
+        - "Cut end-to-end notification latency from minutes to **under two seconds** at the 99th percentile by batching, connection pooling, and tuning consumer concurrency"
+
+    - title: "Public REST and gRPC API gateway"
+      bullets:
+        - "Designed and shipped a **public API gateway** exposing REST and gRPC endpoints to thousands of third-party developers, with schema-driven routing and validation"
+        - "Added **authentication, rate limiting, and request validation** as reusable middleware shared across services, standardizing security controls platform-wide"
+        - "Authored versioned API docs and **client SDKs** in multiple languages that reduced partner integration time from weeks to days and cut integration support tickets"
+
+    - title: "Observability and incident response tooling"
+      bullets:
+        - "Rolled out **structured logging, metrics, and distributed tracing** across 30+ services for end-to-end visibility into cross-service request flows"
+        - "Built **on-call dashboards and automated runbooks** that cut mean time to resolution by roughly **35%** and reduced repetitive pages for the on-call rotation"
+        - "Established **service-level objectives** and alerting policies adopted as the team standard for every new service, tying alerts to real user-facing impact"
+
+    - title: "Customer onboarding automation service"
+      bullets:
+        - "Automated **customer onboarding workflows** with a self-service portal, replacing manual, error-prone provisioning with an auditable, repeatable pipeline"
+        - "Cut new-customer setup time from days to under an hour and removed a recurring class of provisioning errors through validation and automated rollbacks"
+        - "Partnered with support and product teams to define **self-serve usage tiers and limits** for new tenants, reducing back-and-forth during account setup"

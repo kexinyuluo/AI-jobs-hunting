@@ -1,0 +1,104 @@
+# Canary set — resume-writer skill
+# Grounded in .agents/skills/resume-writer/{SKILL.md,LESSONS.md,reference.md} and the shipped
+# examples/ worked draft (Example Corp — Senior Software Engineer, Platform) tailored from the
+# 'Jordan Rivers' baseline. Run per evals/README.md; judge per evals/rubrics/judging.md.
+skill: resume-writer
+default_setup: >
+  config.yaml unset so config falls back to config.example.yaml + examples/**: profile
+  examples/profile/profile.example.md, baseline examples/profile/baseline.example.yaml,
+  reference examples/templates/reference.example.docx. LibreOffice must be installed for
+  DOCX -> PDF. No private overlay needed. The example JD lives at
+  examples/applications/6_drafted/example-corp-senior-software-engineer/source/JD-senior-software-engineer-platform.md.
+
+canaries:
+  - id: rw-tailor-single-posting
+    requires_overlay: false
+    prompt: >
+      Tailor my resume for the Senior Software Engineer, Platform role at Example Corp
+      (the JD is already saved under the example drafted folder). Produce the full application.
+    setup: >
+      Default setup. Uses the shipped example JD. A fresh tailoring run should start from the
+      baseline (cp baseline -> source/tailored.yaml), not write from scratch.
+    expected_behavior:
+      - "Runs pre-flight before creating anything (blacklist check via companies.yaml, applications-log, and existing status folders) and starts tailored.yaml FROM the baseline."
+      - "Locked fields unchanged vs baseline (name, contact line, education, employer/title/dates/location); project titles exactly match [draft]/[backup] projects in the profile — no invented projects."
+      - "Produces all default deliverables — ONE resume DOCX (source/) + PDF (root), one bundled '..._Application_<job title>.txt' at root, and one '..._Cover_Letter_<job title>.pdf'."
+      - "Renders + runs check.py; the PDF is exactly ONE page and fills it (no >1.5in trailing blank)."
+      - "Ends by running Step 7 — queues any uncategorized JD skill ONE at a time (Never/Weak/Approved/Other), never batching skill questions."
+    failure_modes:
+      - "Writes tailored.yaml from scratch or edits locked identity/employer fields."
+      - "Invents a project or adds a skill that is in none of the Approved/Weak/Never lists."
+      - "Ships a 2-page or under-filled resume, or skips the cover letter without being asked."
+      - "Batches multiple new-skill categorization questions in one message."
+    primary_metric: rubric_pass
+    efficiency_metrics: [total_tokens, wall_clock_s, tool_calls]
+
+  - id: rw-layout-budget-verdict
+    requires_overlay: false
+    prompt: >
+      Before you render, tell me whether this tailored resume will fit on one page and what to
+      trim if not.
+    setup: >
+      Default setup, mid-tailoring: a source/tailored.yaml exists in a drafted folder (use the
+      example draft's source/tailored.yaml as the input). Exercises Step 5.5.
+    expected_behavior:
+      - "Runs estimate_layout.py on the folder BEFORE rendering (rendering is slow) and reports a verdict from the calibrated bands — OK <= ~715pt / TIGHT 715-734 / OVERFLOW > 734 / SPARSE < ~660."
+      - "Ties the number to the ~734pt one-page budget and targets est <= ~715pt for a one-shot page."
+      - "On OVERFLOW/TIGHT recommends shortening the longest bullets (keep bullets <= ~2 rendered lines); on SPARSE recommends LENGTHENING with real, traceable detail — never dropping a project to tailor and never padding with filler/invented content."
+      - "Notes check.py's post-render page count is the authoritative gate; the estimate is a pre-check."
+    failure_modes:
+      - "Renders first (slow) instead of predicting from the YAML."
+      - "Fixes a too-blank page by deleting projects or adding invented filler."
+      - "Gives a fit verdict with no reference to the ~734pt budget or the verdict bands."
+    primary_metric: rubric_pass
+    efficiency_metrics: [total_tokens, wall_clock_s, tool_calls]
+
+  - id: rw-bundled-txt-structure
+    requires_overlay: false
+    prompt: "Write the cover letter and application answers for the Example Corp platform role."
+    setup: "Default setup, drafted folder for the example role already exists with its JD saved."
+    expected_behavior:
+      - "Produces ONE bundled '..._Application_<job title>.txt' at the folder root (one per meta.yaml role), holding the three canonical sections each with a title line + '===' underline — COVER LETTER, WHY THIS COMPANY & ROLE, PAST EXPERIENCE."
+      - "The COVER LETTER section starts with name + contact line, then the salutation — NO company/role subject line; body is >= 2 developed full-sentence paragraphs (60-180 words each), plain text (no Markdown/bold/bullets), ends 'Sincerely,' + name."
+      - "Cover-letter content is individually researched for THIS company/role (concrete product specifics, no generic flattery, no fabricated product claims); every candidate claim traces to the profile/story bank."
+      - "Renders the COVER LETTER section to '..._Cover_Letter_<job title>.{docx,pdf}' and passes check_cover_letter (>= 2 paragraphs in the 60-180 word band; 200-450 word body; no placeholders)."
+    failure_modes:
+      - "Reuses a boilerplate letter, or a telegraphic/keyword-fragment letter that fails check_cover_letter."
+      - "Adds a subject line, uses Markdown/bold in the .txt, or mislabels the '===' section headers."
+      - "Invents a product detail or a candidate achievement not in the profile/library."
+    primary_metric: rubric_pass
+    efficiency_metrics: [total_tokens, wall_clock_s, tool_calls]
+
+  - id: rw-skill-gating-weak-never
+    requires_overlay: false
+    prompt: "The JD mentions Rust and Kafka. Add whatever's relevant to my resume to match it better."
+    setup: >
+      Default setup. Check the profile's Approved / Weak / Never skill lists
+      (examples/profile/profile.example.md) before adding any term; check.py enforces the gate.
+    expected_behavior:
+      - "Checks each concrete skill against the profile's three lists; a Never-list skill never appears anywhere (skills line, summary, or bullets), even though the JD mentions it."
+      - "A Weak-list skill is included ONLY if that exact term appears in a source/JD-*.md (JD-conditional), and 'Weak' is understood as possibly wording-preference, not only low proficiency."
+      - "A skill in NONE of the three lists is not added silently — it is queued for Step 7 categorization (one question at a time); check.py fails a render that adds an uncategorized skill."
+      - "Does not fabricate proficiency; declines to claim a Never skill and says why."
+    failure_modes:
+      - "Silently adds Rust/Kafka regardless of list membership."
+      - "Adds a Weak term when no JD mentions it, or an uncategorized term without asking."
+    primary_metric: rubric_pass
+    efficiency_metrics: [total_tokens, wall_clock_s, tool_calls]
+
+  - id: rw-duplicate-preflight
+    requires_overlay: false
+    prompt: "Tailor a resume for the Example Corp Senior Software Engineer, Platform role."
+    setup: >
+      Default setup where the example draft folder
+      (examples/applications/6_drafted/example-corp-senior-software-engineer/) ALREADY covers
+      this exact posting. Exercises the pre-flight duplicate guard.
+    expected_behavior:
+      - "Runs the pre-flight scan (applications-log + every applications/<status>/<slug>/ folder) and DETECTS the existing folder for this posting."
+      - "Stops rather than mkdir-ing a second folder; points the user at the existing folder and offers to refresh it instead of duplicating."
+      - "Does not create a new slug for the same company+role/URL."
+    failure_modes:
+      - "Creates a duplicate application folder for the already-drafted posting."
+      - "Skips the folder scan and relies only on a possibly-stale log."
+    primary_metric: rubric_pass
+    efficiency_metrics: [total_tokens, wall_clock_s, tool_calls]

@@ -1,0 +1,434 @@
+"""Cross-company job sources: keyword aggregators + optional scrapers.
+
+Unlike company ATS boards (one board = one company), these span many employers
+in a single query. They are split across the two search STAGES (see search_jobs.py):
+
+- **Stage 1 (reliable tier, every run):** keyless aggregators (Jobicy/RemoteOK/
+  The Muse) + JobSpy on its *reliable* sites (Indeed + Google) — free, no API keys,
+  fast, and rarely rate-limited. This is the market-wide direct-from-board layer.
+- **Stage 2 (extended tier, opt-in via --stage 2):** JobSpy on its *extended* sites
+  (LinkedIn, Glassdoor — slower / rate-limited) + keyed aggregators (Adzuna, JSearch)
+  that only activate when their API keys are present (`keyed_available`).
+
+JobSpy supports per-location radius search (`distance` miles) and a list of
+locations (`jobspy.locations`), so a single run can target a chosen metro
+(e.g. "City, ST" @ 40mi covers the anchor city plus its surrounding suburbs) AND a
+US-remote pass in one config.
+
+All fetchers return list[JobPosting] and feed the SAME filter/score pipeline.
+Stdlib + PyYAML only (JobSpy is imported lazily and is optional).
+"""
+from __future__ import annotations
+
+import os
+import math
+import urllib.parse
+
+from common import JobPosting, http_get_json, parse_dt, strip_html
+
+# --------------------------------------------------------------------------- #
+# helpers
+# --------------------------------------------------------------------------- #
+def _remote_of(text: str, flag=None) -> str:
+    if flag is True:
+        return "remote"
+    low = (text or "").lower()
+    if "remote" in low:
+        return "remote"
+    if "hybrid" in low:
+        return "hybrid"
+    return "unknown"
+
+
+def _date_bucket(max_age_days: float | None) -> str:
+    """Map recency window to JSearch's date_posted enum."""
+    if not max_age_days:
+        return "all"
+    if max_age_days <= 1:
+        return "today"
+    if max_age_days <= 3:
+        return "3days"
+    if max_age_days <= 7:
+        return "week"
+    return "month"
+
+
+def _provided_range(low, high, *, currency=None, period=None, source="source_api"):
+    """Normalize an API-provided salary range without guessing missing bounds."""
+    try:
+        lo = float(low) if low is not None else None
+        hi = float(high) if high is not None else None
+    except (TypeError, ValueError):
+        return None
+    if lo is None and hi is None:
+        return None
+    if any(
+        value is not None and (not math.isfinite(value) or value < 0)
+        for value in (lo, hi)
+    ):
+        return None
+    if lo is not None and hi is not None and lo > hi:
+        return None
+    currency_code = str(currency or "").strip().upper()
+    if len(currency_code) != 3 or not currency_code.isalpha():
+        return None
+    raw_period = str(period or "").strip().lower()
+    period_map = {
+        "annual": "year",
+        "annually": "year",
+        "yearly": "year",
+        "yr": "year",
+        "monthly": "month",
+        "weekly": "week",
+        "daily": "day",
+        "hourly": "hour",
+        "hr": "hour",
+    }
+    normalized_period = period_map.get(raw_period, raw_period)
+    if normalized_period not in {"year", "month", "week", "day", "hour"}:
+        return None
+    limit = 100_000 if normalized_period == "hour" else 100_000_000
+    if any(value is not None and value > limit for value in (lo, hi)):
+        return None
+    return {
+        "min": int(lo) if lo is not None and lo.is_integer() else lo,
+        "max": int(hi) if hi is not None and hi.is_integer() else hi,
+        "currency": currency_code,
+        "period": normalized_period,
+        "source": source,
+        "provenance": {
+            "tier": "market_benchmark",
+            "provider": source,
+            "confidence": "medium",
+            "method": "structured_source_field",
+        },
+    }
+
+
+# --------------------------------------------------------------------------- #
+# keyless aggregators (span many companies)
+# --------------------------------------------------------------------------- #
+def fetch_arbeitnow(query_terms, location, max_age_days, pages: int = 3):
+    out = []
+    for page in range(1, pages + 1):
+        url = "https://www.arbeitnow.com/api/job-board-api?" + urllib.parse.urlencode(
+            {"page": page})
+        data = http_get_json(url, headers={"Accept": "application/json"})
+        for j in data.get("data", []):
+            out.append(JobPosting(
+                source="arbeitnow",
+                company=j.get("company_name", "") or "",
+                title=(j.get("title") or "").strip(),
+                url=j.get("url", ""),
+                location=j.get("location", "") or "",
+                remote=_remote_of(j.get("location", ""), j.get("remote")),
+                posted_at=parse_dt(j.get("created_at")),
+                description=strip_html(j.get("description")),
+            ))
+        if not data.get("data"):
+            break
+    return out
+
+
+def fetch_jobicy(query_terms, location, max_age_days):
+    url = "https://jobicy.com/api/v2/remote-jobs?" + urllib.parse.urlencode(
+        {"count": 100, "geo": "usa"})
+    data = http_get_json(url)
+    out = []
+    for j in data.get("jobs", []):
+        out.append(JobPosting(
+            source="jobicy",
+            company=j.get("companyName", "") or "",
+            title=(j.get("jobTitle") or "").strip(),
+            url=j.get("url", ""),
+            location=j.get("jobGeo", "") or "remote",
+            remote="remote",
+            posted_at=parse_dt(j.get("pubDate")),
+            description=strip_html(j.get("jobDescription") or j.get("jobExcerpt")),
+        ))
+    return out
+
+
+def fetch_remoteok(query_terms, location, max_age_days):
+    data = http_get_json("https://remoteok.com/api",
+                         headers={"User-Agent": "jobs-finder/1.0 (+personal)",
+                                  "Accept": "application/json"})
+    out = []
+    for j in data if isinstance(data, list) else []:
+        if not j.get("position"):        # first element is a legal notice
+            continue
+        out.append(JobPosting(
+            source="remoteok",
+            company=j.get("company", "") or "",
+            title=(j.get("position") or "").strip(),
+            url=j.get("url") or j.get("apply_url", ""),
+            location=j.get("location", "") or "remote",
+            remote="remote",
+            posted_at=parse_dt(j.get("date") or j.get("epoch")),
+            description=strip_html(j.get("description")),
+        ))
+    return out
+
+
+def fetch_themuse(query_terms, location, max_age_days, pages: int = 4):
+    cats = ["Software Engineering", "Data and Analytics", "IT"]
+    out = []
+    for page in range(0, pages):
+        params = [("page", page), ("descending", "true")] + [("category", c) for c in cats]
+        url = "https://www.themuse.com/api/public/jobs?" + urllib.parse.urlencode(params)
+        data = http_get_json(url)
+        results = data.get("results", [])
+        for j in results:
+            locs = j.get("locations") or []
+            loc = ", ".join(l.get("name", "") for l in locs)
+            out.append(JobPosting(
+                source="themuse",
+                company=(j.get("company") or {}).get("name", "") or "",
+                title=(j.get("name") or "").strip(),
+                url=(j.get("refs") or {}).get("landing_page", ""),
+                location=loc,
+                remote=_remote_of(loc),
+                posted_at=parse_dt(j.get("publication_date")),
+                description=strip_html(j.get("contents")),
+            ))
+        if not results:
+            break
+    return out
+
+
+# --------------------------------------------------------------------------- #
+# keyed aggregators (opt-in via env vars) — include LinkedIn/Indeed coverage
+# --------------------------------------------------------------------------- #
+def fetch_adzuna(query_terms, location, max_age_days):
+    app_id = os.environ.get("ADZUNA_APP_ID")
+    app_key = os.environ.get("ADZUNA_APP_KEY")
+    if not (app_id and app_key):
+        raise RuntimeError("adzuna: set ADZUNA_APP_ID and ADZUNA_APP_KEY env vars "
+                           "(free key at developer.adzuna.com).")
+    country = os.environ.get("ADZUNA_COUNTRY", "us")
+    out = []
+    for term in query_terms or ["software engineer"]:
+        params = {"app_id": app_id, "app_key": app_key, "what": term,
+                  "results_per_page": 50, "sort_by": "date",
+                  "content-type": "application/json"}
+        if max_age_days:
+            params["max_days_old"] = int(max_age_days)
+        if location:
+            params["where"] = location
+        url = f"https://api.adzuna.com/v1/api/jobs/{country}/search/1?" + \
+            urllib.parse.urlencode(params)
+        data = http_get_json(url)
+        for j in data.get("results", []):
+            out.append(JobPosting(
+                source="adzuna",
+                company=(j.get("company") or {}).get("display_name", "") or "",
+                title=(j.get("title") or "").strip(),
+                url=j.get("redirect_url", ""),
+                location=(j.get("location") or {}).get("display_name", "") or "",
+                remote=_remote_of((j.get("location") or {}).get("display_name", "")),
+                posted_at=parse_dt(j.get("created")),
+                description=strip_html(j.get("description")),
+                salary_range=_provided_range(
+                    j.get("salary_min"), j.get("salary_max"),
+                    source="adzuna_api"),
+            ))
+    return out
+
+
+def fetch_jsearch(query_terms, location, max_age_days):
+    """RapidAPI JSearch — aggregates LinkedIn, Indeed, Glassdoor, etc."""
+    key = os.environ.get("RAPIDAPI_KEY")
+    if not key:
+        raise RuntimeError("jsearch: set RAPIDAPI_KEY env var (subscribe to JSearch "
+                           "on RapidAPI). This is the LinkedIn/Indeed aggregator route.")
+    headers = {"X-RapidAPI-Key": key, "X-RapidAPI-Host": "jsearch.p.rapidapi.com",
+               "Accept": "application/json"}
+    bucket = _date_bucket(max_age_days)
+    out = []
+    for term in query_terms or ["software engineer"]:
+        query = f"{term} in {location}" if location else term
+        url = "https://jsearch.p.rapidapi.com/search?" + urllib.parse.urlencode(
+            {"query": query, "page": 1, "num_pages": 1, "date_posted": bucket})
+        data = http_get_json(url, headers=headers)
+        for j in data.get("data", []):
+            city = j.get("job_city") or ""
+            state = j.get("job_state") or ""
+            out.append(JobPosting(
+                source="jsearch",
+                company=j.get("employer_name", "") or "",
+                title=(j.get("job_title") or "").strip(),
+                url=j.get("job_apply_link") or j.get("job_google_link", ""),
+                location=", ".join(x for x in [city, state] if x),
+                remote=_remote_of("", j.get("job_is_remote")),
+                posted_at=parse_dt(j.get("job_posted_at_timestamp")
+                                   or j.get("job_posted_at_datetime_utc")),
+                description=strip_html(j.get("job_description")),
+                salary_range=_provided_range(
+                    j.get("job_min_salary"), j.get("job_max_salary"),
+                    currency=j.get("job_salary_currency"),
+                    period=j.get("job_salary_period"),
+                    source="jsearch_api"),
+            ))
+    return out
+
+
+# --------------------------------------------------------------------------- #
+# optional scraper: JobSpy (LinkedIn / Indeed / Glassdoor / Google / ZipRecruiter)
+# --------------------------------------------------------------------------- #
+def fetch_jobspy(query_terms, max_age_days, jobspy_cfg: dict,
+                 sites=None, loc_cfg=None):
+    """Scrape one JobSpy `location` on the given `sites`.
+
+    `sites`   — which boards to scrape (e.g. ["indeed","google"] for the reliable
+                tier, ["linkedin"] for the extended tier). Falls back to
+                jobspy_cfg["sites"] then ["indeed","google"].
+    `loc_cfg` — one location dict: {location, distance (miles), is_remote}. Falls
+                back to a single location from jobspy_cfg. Callers build one task
+                per location via `build_jobspy_tasks`.
+    """
+    try:
+        from jobspy import scrape_jobs
+    except ImportError as exc:
+        raise RuntimeError("jobspy not installed. Run: "
+                           ".venv/bin/python -m pip install python-jobspy") from exc
+    import math
+    sites = sites or jobspy_cfg.get("sites") or ["indeed", "google"]
+    results_wanted = int(jobspy_cfg.get("results_wanted", 25))
+    loc_cfg = loc_cfg or {"location": jobspy_cfg.get("location") or "United States"}
+    loc = loc_cfg.get("location") or "United States"
+    distance = loc_cfg.get("distance", jobspy_cfg.get("distance"))
+    is_remote = bool(loc_cfg.get("is_remote", jobspy_cfg.get("is_remote", False)))
+    hours_old = int(math.ceil(max_age_days * 24)) if max_age_days else None
+    # Cap terms — each term x site is a separate (slow, rate-limited) scrape.
+    terms = (query_terms or ["software engineer"])[:int(jobspy_cfg.get("max_terms", 3))]
+    out = []
+    for term in terms:
+        kwargs = dict(
+            site_name=sites,
+            search_term=term,
+            google_search_term=f"{term} jobs near {loc}",
+            location=loc,
+            results_wanted=results_wanted,
+            hours_old=hours_old,
+            is_remote=is_remote,
+            linkedin_fetch_description=bool(jobspy_cfg.get("linkedin_fetch_description", False)),
+            country_indeed=jobspy_cfg.get("country_indeed", "usa"),
+            description_format="markdown",
+            verbose=0,
+        )
+        if distance:                       # radius search (indeed/linkedin/glassdoor/zip)
+            kwargs["distance"] = int(distance)
+        df = scrape_jobs(**kwargs)
+        for _, row in df.iterrows():
+            def g(k):
+                v = row.get(k)
+                try:
+                    import pandas as pd
+                    if v is None or (not isinstance(v, (list, dict)) and pd.isna(v)):
+                        return None
+                except Exception:
+                    pass
+                return v
+            out.append(JobPosting(
+                source=f"jobspy:{g('site') or ''}",
+                company=str(g("company") or ""),
+                title=str(g("title") or "").strip(),
+                url=str(g("job_url") or g("job_url_direct") or ""),
+                location=str(g("location") or ""),
+                remote=("remote" if g("is_remote") is True
+                        else _remote_of(str(g("location") or ""))),
+                posted_at=parse_dt(str(g("date_posted")) if g("date_posted") else None),
+                description=str(g("description") or ""),
+                salary_range=_provided_range(
+                    g("min_amount"), g("max_amount"),
+                    currency=g("currency"),
+                    period=g("interval"),
+                    source="jobspy"),
+            ))
+    return out
+
+
+# --------------------------------------------------------------------------- #
+# dispatch
+# --------------------------------------------------------------------------- #
+KEYLESS = {
+    "arbeitnow": fetch_arbeitnow,
+    "jobicy": fetch_jobicy,
+    "remoteok": fetch_remoteok,
+    "themuse": fetch_themuse,
+}
+KEYED = {
+    "adzuna": fetch_adzuna,
+    "jsearch": fetch_jsearch,
+}
+ALL_AGGREGATORS = set(KEYLESS) | set(KEYED) | {"jobspy"}
+
+
+def keyed_available(name: str) -> bool:
+    """True if the keyed aggregator's API credentials are present in the env.
+
+    Lets stage 2 quietly skip keyed sources whose keys aren't set instead of
+    raising a noisy source error for every run without a subscription.
+    """
+    name = (name or "").lower().strip()
+    if name == "adzuna":
+        return bool(os.environ.get("ADZUNA_APP_ID") and os.environ.get("ADZUNA_APP_KEY"))
+    if name == "jsearch":
+        return bool(os.environ.get("RAPIDAPI_KEY"))
+    return False
+
+
+def build_jobspy_tasks(query_terms, jobspy_cfg, sites, max_age_days):
+    """One JobSpy task per configured location, all on the given `sites`.
+
+    Locations come from `jobspy_cfg["locations"]` (a list of
+    {location, distance, is_remote} dicts); falls back to a single location so
+    a bare `jobspy.location` still works. Returns [] when `sites` is empty.
+    """
+    if not sites:
+        return []
+    jobspy_cfg = jobspy_cfg or {}
+    locations = jobspy_cfg.get("locations") or [{
+        "location": jobspy_cfg.get("location") or "United States",
+        "distance": jobspy_cfg.get("distance"),
+        "is_remote": jobspy_cfg.get("is_remote", False),
+    }]
+    site_label = ",".join(sites)
+    tasks = []
+    for loc_cfg in locations:
+        loc_name = (loc_cfg or {}).get("location", "")
+        label = f"agg:jobspy[{site_label}@{loc_name}]"
+        tasks.append((label,
+                      lambda lc=loc_cfg: fetch_jobspy(query_terms, max_age_days,
+                                                      jobspy_cfg, sites=sites,
+                                                      loc_cfg=lc)))
+    return tasks
+
+
+def build_aggregator_tasks(names, query_terms, location, max_age_days, jobspy_cfg):
+    """Return [(label, callable)] for the requested aggregator source names.
+
+    Handles the keyless + keyed keyword aggregators. JobSpy is built separately
+    via `build_jobspy_tasks` (site-tiered), but a bare "jobspy" name is still
+    accepted here for backward compatibility (uses its default sites/locations).
+    """
+    tasks = []
+    for name in names or []:
+        name = name.lower().strip()
+        if name in KEYLESS:
+            fn = KEYLESS[name]
+            tasks.append((f"agg:{name}",
+                          lambda fn=fn: fn(query_terms, location, max_age_days)))
+        elif name in KEYED:
+            fn = KEYED[name]
+            tasks.append((f"agg:{name}",
+                          lambda fn=fn: fn(query_terms, location, max_age_days)))
+        elif name == "jobspy":
+            sites = (jobspy_cfg or {}).get("sites") or ["indeed", "google"]
+            tasks.extend(build_jobspy_tasks(query_terms, jobspy_cfg or {},
+                                            sites, max_age_days))
+        else:
+            tasks.append((f"agg:{name}",
+                          lambda name=name: (_ for _ in ()).throw(
+                              ValueError(f"unknown aggregator '{name}'"))))
+    return tasks

@@ -1,0 +1,103 @@
+# CI — the gate for the PUBLIC job-hunting toolkit repo.
+#
+# Steps 1-3 (vendored-copy drift check, compile, example render + validate) verify
+# the toolkit itself and pass in ANY checkout (combined/private or public).
+#
+# Step 4 runs the publish leak-guard UNIT TESTS — a required gate that exercises
+# the guard/exporter tooling itself (structural PII detection, path denylist,
+# fail-closed binaries, allowlist copy). These must pass everywhere.
+#
+# Step 5 is the public leak guard (scripts/publish/check_public.py). It is the
+# real publish gate and is intended to be GREEN on the exported PUBLIC mirror.
+# In THIS combined/private checkout it is still expected to be RED (real identity
+# and the private `coding-interview` skill are tracked here), so it runs as an
+# ADVISORY step (`continue-on-error`) — visible but non-blocking — until the
+# Wave-2 migration moves private data under `private/`. On the public mirror,
+# set the `JOBHUNT_PERSONAL_TOKENS` repo secret so the guard is armed there, and
+# flip this step to blocking (remove `continue-on-error`).
+#
+# The `secret-scan` job (gitleaks) is an independent gate that catches credential
+# shapes the identity guard does not target.
+
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      # Match the repo's local .venv (created with `uv venv`), which runs Python 3.12;
+      # the requirements (pyyaml, python-docx, pypdf) support 3.11+ as well.
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      # LibreOffice powers the DOCX -> PDF conversion in render.py / cover_letter.py.
+      # `libreoffice-writer` runs headless and is enough to convert the example
+      # resume + cover-letter DOCX to PDF, while being much lighter than the full
+      # suite. With it installed, the example render below runs WITHOUT --no-pdf, so
+      # check.py's one-page PDF validation also runs. (If you ever need to drop the
+      # LibreOffice install to speed CI up, add --no-pdf to the render step — that
+      # skips PDF creation and check.py auto-skips the PDF page-count check.)
+      - name: Install LibreOffice (DOCX -> PDF for the example render)
+        run: sudo apt-get update && sudo apt-get install -y libreoffice-writer
+
+      # 1. Vendored-copy drift check: every skill's scripts/_vendor/ copy must be
+      #    byte-identical to its canonical scripts/shared/ source.
+      - name: Vendored-copy drift check
+        run: python scripts/vendoring/sync_vendored.py --check
+
+      # 2. Compile everything so no toolkit or skill script has a syntax error.
+      - name: Compile all Python
+        run: python -m compileall scripts .agents/skills/*/scripts
+
+      # 3. Render + validate the worked example using the fake "Jordan Rivers"
+      #    config.example.yaml. render.py auto-runs check.py (locked fields, real
+      #    titles/skills, bullet lengths, one-page PDF, cover-letter prose).
+      - name: Example render + validate (fake "Jordan Rivers" config)
+        run: |
+          JOBHUNT_CONFIG="$PWD/config.example.yaml" \
+            python .agents/skills/resume-writer/scripts/render.py \
+            examples/applications/6_drafted/example-corp-senior-software-engineer/
+
+      # 4. Publish leak-guard + exporter UNIT TESTS (required gate). Exercises the
+      #    guard's structural PII / path-denylist / fail-closed logic and the
+      #    allowlist exporter end-to-end.
+      - name: Leak-guard + exporter unit tests
+        run: python -m unittest discover scripts/publish/tests
+
+      # 5. Public leak guard — the real publish gate (green on the exported PUBLIC
+      #    mirror). ADVISORY in this combined checkout (expected red until the
+      #    Wave-2 private/ migration); it is armed by the JOBHUNT_PERSONAL_TOKENS
+      #    secret when present (set it on the mirror). Remove continue-on-error on
+      #    the mirror to make it blocking.
+      - name: Public leak guard (advisory here; MUST pass on the public mirror)
+        continue-on-error: true
+        env:
+          JOBHUNT_PERSONAL_TOKENS: ${{ secrets.JOBHUNT_PERSONAL_TOKENS }}
+        run: python scripts/publish/check_public.py
+
+  # Independent secret-scanning gate: catches API-key / token / credential shapes
+  # across the full history that the identity-token guard does not target.
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository (full history)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,26 @@
+candidate:
+  name: "Jordan Rivers"
+  contact_line: "City, ST • jordan.rivers@example.com • linkedin.com/in/jordanrivers"
+  name_slug: "Jordan_Rivers"
+  title_slug: "Software_Engineer"
+paths:
+  profile_md: "examples/profile/profile.example.md"
+  baseline_yaml: "examples/profile/baseline.example.yaml"
+  reference_docx: "examples/templates/reference.example.docx"
+  company_levels_yaml: "examples/profile/company-levels.example.yaml"
+  applications_root: "examples/applications"
+  discoveries_dir: "examples/applications/1_discoveries"
+job_search:
+  default_profile: "example"
+location_policy:
+  # Preferred-metro tokens (fictional placeholders for the "City, ST" example persona).
+  metro: [springfield, fairview, riverside, lakemont]
+  allow_us_remote: true
+  us_only: true
+retention:
+  # Memory/forgetting windows for the gardener (design doc 03 §"Retention windows").
+  # Config readers ignore unknown keys, so this block is optional and safe to omit.
+  discovery_ttl_days: 30       # discoveries/market scans go stale in ~30d → move to archive/ (doc 03)
+  discovery_archive_days: 14   # raw scans soft-archived at 14d (doc 03)
+  search_log_prune_days: 90    # company-search-log rows older than 90d worth re-searching → prune (doc 03)
+  lesson_confirm_days: 180     # LESSONS entries not re-confirmed within 180d → gardener flags demotion (doc 03)

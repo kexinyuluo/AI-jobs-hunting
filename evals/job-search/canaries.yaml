@@ -1,0 +1,98 @@
+# Canary set — job-search skill
+# Frozen regression + A/B prompts. Each canary is a self-contained user prompt plus a
+# plain-language rubric. Run per evals/README.md; judge per evals/rubrics/judging.md.
+# Grounded in .agents/skills/job-search/SKILL.md + LESSONS.md and the shipped
+# profiles/example.yaml (target [mid, senior]; us_only: true; visa exclude_negative;
+# max_age_days: null; exclude_neutralize includes 'member of technical staff').
+skill: job-search
+default_setup: >
+  config.yaml unset so config falls back to config.example.yaml + examples/** (the
+  fictional 'Jordan Rivers' candidate). The shipped job-search profile is `example`.
+  Network access is required (public read APIs; Stage 1, no keys). No private overlay.
+
+canaries:
+  - id: js-core-shortlist
+    requires_overlay: false
+    prompt: "Find jobs matching my profile and give me a ranked shortlist."
+    setup: >
+      Default setup. Runs the default `example` profile
+      (.agents/skills/job-search/scripts/search_jobs.py --profile example), Stage 1.
+    expected_behavior:
+      - "Runs search_jobs.py against the `example` profile (Stage 1 — company ATS boards + keyless aggregators + JobSpy Indeed/Google) rather than inventing postings."
+      - "Writes the ranked shortlist to the discoveries dir (config.discoveries_dir(); examples/applications/1_discoveries/<YYYYMMDD>-example.md in examples fallback) AND presents the top matches in-chat."
+      - "Every surfaced row carries a real `source` + `url`; nothing is fabricated. '?' is used for facts the posting did not provide, never a guess."
+      - "Presents company, title, score, level/Google-equivalent range, YOE, salary, visa label, and WHY each matched; calls out visa `unclear` rows as needing employer confirmation."
+      - "Hands off next steps to resume-writer / application-tracker rather than tailoring here."
+    failure_modes:
+      - "Fabricates or paraphrases postings with no source URL."
+      - "Hardcodes criteria into the script instead of using the profile."
+      - "Skips writing the discoveries file, or presents raw JSON with no match reasons."
+    primary_metric: rubric_pass
+    efficiency_metrics: [total_tokens, wall_clock_s, tool_calls]
+
+  - id: js-visa-require-positive
+    requires_overlay: false
+    prompt: "Only show me roles that explicitly offer visa sponsorship — I need H-1B."
+    setup: >
+      Default setup, plus the stricter visa gate: `--visa-policy require_positive`
+      (example profile ships exclude_negative / needs_sponsorship: false).
+    expected_behavior:
+      - "Applies require_positive so only postings with an EXPLICIT sponsorship signal pass, and warns the user this yields few results."
+      - "Does NOT treat boilerplate 'must be authorized to work in the US' as a sponsorship denial ('no') — that phrase is used even by sponsoring employers (LESSONS, Visa filtering)."
+      - "Labels remaining rows yes/no/unclear and states the labels are heuristic; tells the user to confirm sponsorship directly with each employer."
+      - "Does not silently widen the filter back to exclude_negative to produce more results."
+    failure_modes:
+      - "Rejects everything by matching generic work-authorization boilerplate as 'no'."
+      - "Presents the visa label as authoritative instead of advisory."
+      - "Reverts to the default policy to pad the result count without telling the user."
+    primary_metric: rubric_pass
+    efficiency_metrics: [total_tokens, wall_clock_s, tool_calls]
+
+  - id: js-mts-not-staff
+    requires_overlay: false
+    prompt: "Search mid-to-senior roles for me, but keep me out of staff-and-above jobs."
+    setup: >
+      Default setup. The example profile's seniority.target is [mid, senior] with
+      exclude_neutralize: ['member of technical staff'].
+    expected_behavior:
+      - "Keeps 'Member of Technical Staff' (MTS) roles — the IC title OpenAI/Anthropic/Perplexity use — because exclude_neutralize strips that phrase BEFORE the exclude check (LESSONS, Title exclusions); MTS is NOT staff-level."
+      - "Excludes/demotes true 'Staff / Staff+ / Senior Staff / Principal / Distinguished Engineer' titles per the [mid, senior] band and seniority.fit_weight."
+      - "Explains the distinction if the user's phrasing conflates 'staff' the word with staff-level seniority, rather than blindly dropping every title containing 'staff'."
+    failure_modes:
+      - "Drops MTS roles by matching the bare word 'staff'."
+      - "Lets staff+/principal roles top the ranked list unchanged."
+    primary_metric: rubric_pass
+    efficiency_metrics: [total_tokens, wall_clock_s, tool_calls]
+
+  - id: js-recency-vs-research-window
+    requires_overlay: false
+    prompt: "What matching roles were posted in the last 3 days?"
+    setup: >
+      Default setup, plus `--max-age-days 3` (example profile ships max_age_days: null).
+    expected_behavior:
+      - "Applies the posting-age filter (--max-age-days 3), an opt-in freshness window, and surfaces only recently-posted matches."
+      - "Does NOT confuse posting age with the 7-day company re-search window (company_search_log.skip_within_days) — they are unrelated (SKILL.md, How It Works)."
+      - "Notes that posting age is off by default and this run is the explicit 'last N days' case."
+    failure_modes:
+      - "Treats the 7-day company-search-log skip as if it were a posting-age filter."
+      - "Silently keeps stale postings, or claims recency it did not filter for."
+    primary_metric: rubric_pass
+    efficiency_metrics: [total_tokens, wall_clock_s, tool_calls]
+
+  - id: js-single-company-location-verdict
+    requires_overlay: false
+    prompt: "Does Cloudflare currently have any openings that fit my location policy?"
+    setup: >
+      Default setup. Cloudflare is in companies.yaml (greenhouse/cloudflare). Uses
+      company_roles.py --name Cloudflare --match-only. Network required.
+    expected_behavior:
+      - "Uses company_roles.py (single-company re-check), NOT the full search pipeline, and resolves 'Cloudflare' through the registry."
+      - "Applies the location verdict from the vendored _vendor/location.py (the same policy the profile enforces via config.location_policy()); --match-only shows only policy-matching roles."
+      - "States it does NOT apply the role/seniority/visa title gate (it lists everything so the user judges role fit), and that the remote signal is a heuristic to confirm on the JD."
+      - "Foreign-location correctness — does not leak foreign roles by false-matching country codes (e.g. `CA`/`IN`); the foreign check runs before the US-abbrev check (LESSONS, Location / US gate)."
+    failure_modes:
+      - "Runs the whole ranked search instead of a single-company re-check."
+      - "Presents the ATS remote flag as ground truth without a confirm-on-JD caveat."
+      - "Surfaces a Canada/India role as US because of a two-letter abbrev false-match."
+    primary_metric: rubric_pass
+    efficiency_metrics: [total_tokens, wall_clock_s, tool_calls]

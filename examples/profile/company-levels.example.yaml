@@ -1,0 +1,101 @@
+# Reusable company leveling/compensation cache used while creating meta.yaml.
+# Keep real, time-sensitive research beside the real candidate profile; this
+# tracked file is a fictional schema example. Compensation is USD/year.
+schema_version: 2
+compensation_max_age_days: 365
+tier_precedence:
+  - live_jd
+  - employer_official
+  - market_benchmark
+  - generic_heuristic
+companies:
+  - name: "Example Corp"
+    aliases: ["Example"]
+    last_verified: "2025-01-15"
+    sources:
+      - "https://example.com/careers/engineering-levels"
+    levels:
+      - name: "Software Engineer II"
+        aliases: ["SWE II"]
+        title_patterns: ["Engineer II"]
+        normalized: "mid"
+        google_equivalent:
+          min: 4.0
+          max: 4.6
+          provenance:
+            tier: market_benchmark
+            provider: "example_market_benchmark"
+            url: "https://example.com/benchmarks/engineering-levels"
+            retrieved_at: "2025-01-15"
+            geography: "US"
+            confidence: medium
+            sample_size: 85
+        required_yoe:
+          min: 2
+          max: 5
+          provenance:
+            tier: employer_official
+            provider: "example_careers"
+            url: "https://example.com/careers/engineering-levels"
+            retrieved_at: "2025-01-15"
+            geography: "US"
+            confidence: high
+        compensation:
+          salary_range:
+            min: 120000
+            max: 155000
+            currency: USD
+            period: year
+            provenance:
+              tier: employer_official
+              provider: "example_careers"
+              url: "https://example.com/careers/engineering-levels"
+              retrieved_at: "2025-01-15"
+              geography: "US"
+              confidence: high
+          total_compensation_range:
+            min: 145000
+            max: 195000
+            currency: USD
+            period: year
+            provenance:
+              tier: market_benchmark
+              provider: "example_market_benchmark"
+              url: "https://example.com/benchmarks/engineering-compensation"
+              retrieved_at: "2025-01-15"
+              geography: "US"
+              confidence: medium
+              sample_size: 85
+      - name: "Senior Software Engineer"
+        aliases: ["Senior SWE"]
+        title_patterns: ["Senior Software Engineer"]
+        normalized: "senior"
+        google_equivalent:
+          min: 4.8
+          max: 5.5
+          provenance: {tier: market_benchmark, provider: example_market_benchmark,
+                       url: "https://example.com/benchmarks/engineering-levels",
+                       retrieved_at: "2025-01-15", geography: US, confidence: medium}
+        required_yoe:
+          min: 5
+          max: 9
+          provenance: {tier: employer_official, provider: example_careers,
+                       url: "https://example.com/careers/engineering-levels",
+                       retrieved_at: "2025-01-15", geography: US, confidence: high}
+        compensation:
+          salary_range:
+            min: 150000
+            max: 195000
+            currency: USD
+            period: year
+            provenance: {tier: employer_official, provider: example_careers,
+                         url: "https://example.com/careers/engineering-levels",
+                         retrieved_at: "2025-01-15", geography: US, confidence: high}
+          total_compensation_range:
+            min: 190000
+            max: 275000
+            currency: USD
+            period: year
+            provenance: {tier: market_benchmark, provider: example_market_benchmark,
+                         url: "https://example.com/benchmarks/engineering-compensation",
+                         retrieved_at: "2025-01-15", geography: US, confidence: medium}

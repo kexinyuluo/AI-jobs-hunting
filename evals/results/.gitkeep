@@ -1,0 +1,6 @@
+# Keep evals/results/ tracked.
+#
+# Result files (evals/results/<skill>-<sha>-<date>.md, from TEMPLATE.md) are per-machine:
+# they depend on live network/job-board state and the local model version, so they are NOT a
+# shared source of truth. They are tracked for now for convenience; a maintainer may add
+# `evals/results/*.md` (keeping TEMPLATE.md and this .gitkeep) to .gitignore later.

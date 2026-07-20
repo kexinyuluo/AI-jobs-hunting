@@ -1,0 +1,26 @@
+COVER LETTER
+============
+Jordan Rivers
+City, ST • jordan.rivers@example.com • linkedin.com/in/jordanrivers
+Dear Example Corp Hiring Team,
+
+I am excited to apply for the Senior Software Engineer, Platform role at Example Corp. Your mission of giving engineering teams a dependable, self-service platform resonates with how I like to work, because I believe the best infrastructure fades into the background and lets product teams move quickly without worrying about the plumbing underneath. Over the past several years I have built exactly the kind of paved-road tooling, internal APIs, and automation that your platform team is investing in, and I would love to help your engineers and third-party developers ship faster with fewer operational surprises. The chance to shape a platform that other people depend on every day is the work I find most rewarding.
+
+In my current role I led the migration of a monolithic payments service into independently deployable microservices, which cut our deploy time from hours to minutes and made on-call far more predictable. Because reliability matters so much on a platform, I paired that work with structured logging, distributed tracing, and service-level objectives across more than thirty services, cutting mean time to resolution by roughly a third. I am equally comfortable designing an event-driven pipeline that processes tens of millions of events a day and sitting with a product team to smooth out a rough onboarding flow. What ties these projects together is a habit of building well-tested, observable systems in Go and Python that colleagues can extend and trust long after I have moved on.
+
+I would welcome the opportunity to talk about how my background in distributed systems, API design, and platform engineering could help Example Corp. Thank you for considering my application, and I look forward to hearing from you.
+
+Sincerely,
+Jordan Rivers
+
+WHY THIS COMPANY & ROLE
+=======================
+Example Corp stands out to me because it treats internal infrastructure as a real product rather than an afterthought. The platform team owns the APIs, automation, and observability that hundreds of engineers rely on, and that leverage is exactly where I do my best work: one well-designed abstraction or paved road can save every other team weeks of effort and prevent whole classes of incidents.
+
+This role fits the arc of my career. I have spent years migrating monoliths to microservices, designing public REST and gRPC APIs, and building the dashboards and runbooks that make services operable. I am drawn to the Platform team's focus on reliability, developer experience, and clean interfaces, and I want to keep solving problems where the customer is another engineer and the measure of success is how quickly and safely they can ship.
+
+PAST EXPERIENCE
+===============
+At Northwind Systems I have worked as a senior software engineer across the backend and platform stack. I led a payments platform migration into independently deployable microservices, introducing idempotent transaction workflows, contract tests, and canary releases that cut deploy time from hours to minutes and reduced failed-payment incidents by 40%.
+
+I also built an event-driven notifications pipeline handling more than 50 million events per day with at-least-once delivery, backpressure, and dead-letter queues, and shipped a public API gateway exposing REST and gRPC endpoints with shared authentication, rate limiting, and request validation. Alongside that product work, I rolled out structured logging, metrics, and distributed tracing across more than thirty services and established the service-level objectives and on-call runbooks the team adopted as its standard. These projects consistently combined hands-on distributed-systems engineering with a focus on reliability, observability, and developer experience.

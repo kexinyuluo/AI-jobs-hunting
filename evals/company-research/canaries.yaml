@@ -1,0 +1,84 @@
+# Canary set — company-research skill
+# Grounded in .agents/skills/company-research/{SKILL.md,LESSONS.md}: the Depth Bar, the
+# evidence-based 5-Whys moat method (Claim -> Evidence -> Judgment), the fixed folder structure
+# (for-interview 01-09 + for-myself 01-05; always produce 03/05/09), and the never-fabricate
+# sourcing rules. Real-company canaries use Cloudflare (a well-documented public company) with a
+# FICTIONAL posting; the honesty canary uses the fictional Example Corp so no real facts exist.
+# Run per evals/README.md; judge per evals/rubrics/judging.md.
+skill: company-research
+default_setup: >
+  config.yaml unset -> config.example.yaml + examples/** fallback. Live network research
+  (curl / web fetch) is required for the real-company canaries. Output lands under
+  interviews/company-specific/<company>/company-info/ (a scratch/git-ignored path in a
+  public checkout — the transcript, not a commit, is what gets judged). No private overlay needed.
+
+canaries:
+  - id: cr-full-research-structure
+    requires_overlay: false
+    prompt: >
+      I'm interviewing for a Senior Software Engineer, Platform role at Cloudflare. Do deep,
+      interview-ready research and build the company-info folder.
+    setup: "Default setup. Real company (Cloudflare), fictional posting. Network required."
+    expected_behavior:
+      - "Creates the full folder — for-interview/ 01-09 and for-myself/ 01-05, plus a README index with a TL;DR, research date, and a master source list."
+      - "Actually produces 03 (technical-challenges-deep-dive, 3-6 dives), 05 (moat and differentiation), and 09 (question bank) — these three are the point of the skill."
+      - "Clears the Depth Bar — every major fact answers 'so what?' / 'why is this hard?', names concrete subsystems/repos/blog-posts/competitors (not 'scalable, reliable infra'), and each deep-dive section ends with a 'My read' POV."
+      - "Does live research (fetches primary sources, cites the specific artifact) rather than writing from memory; marks non-first-party claims [confirmed]/[likely]/[unverified] and inferences [inference]."
+      - "Keeps comp/WLB/visa OUT of the question bank — those live in for-myself/."
+    failure_modes:
+      - "Homepage-depth summary that could have been written without reading anything specific."
+      - "Skips 03 / 05 / 09, or omits the for-myself/ files."
+      - "Uncited claims, or facts written from memory with no source artifact."
+    primary_metric: rubric_pass
+    efficiency_metrics: [total_tokens, wall_clock_s, tool_calls]
+
+  - id: cr-moat-5whys
+    requires_overlay: false
+    prompt: >
+      For Cloudflare, write the competitive-moat file: is the moat real and durable, and how
+      defensible is it against each competitor?
+    setup: "Default setup. Focuses on 05-competitive-moat-and-differentiation.md. Network required."
+    expected_behavior:
+      - "Treats every moat/defensibility/growth claim as a hypothesis to TEST, not a finding, and never restates the company's marketing as fact."
+      - "For each candidate moat, names its TYPE (a 7-Powers / economic-moat lens) and runs a 5-Whys chain that bottoms out in EVIDENCE (adoption/retention, pricing power, switching costs, competitor attempts, unit economics), not another claim."
+      - "Explicitly separates Claim (what they say) -> Evidence (what's observable, tagged [confirmed]/[likely]/[unverified]) -> Verdict/Judgment (REAL and durable / eroding / weak / just a feature)."
+      - "Includes a defensibility scorecard per competitor/threat (Strong/Moderate/Weak + one-line evidence) and an evidence-based growth read (expansion vectors + ceiling + what must be true), ending with a 'My read'."
+    failure_modes:
+      - "Asserts 'network effects' / 'switching costs' with no 5-Whys and no evidence."
+      - "Parrots the company's own moat framing as the finding."
+      - "Omits the defensibility scorecard or the growth-potential read."
+    primary_metric: rubric_pass
+    efficiency_metrics: [total_tokens, wall_clock_s, tool_calls]
+
+  - id: cr-question-bank
+    requires_overlay: false
+    prompt: "Give me the question bank to ask Cloudflare's hiring manager and engineers."
+    setup: "Default setup. Focuses on 09-question-bank.md. Network helpful (grounds specifics)."
+    expected_behavior:
+      - "Includes the two required deep groups — 'Hard Problems and Challenges' (drawn from 03) and 'Differentiation, Moat and Growth' (drawn from 05) — plus HM / Engineers / Skip-level / Recruiter groups."
+      - "Each question names a SPECIFIC product, repo, blog post, competitor, or customer and carries a short parenthesized intent tag — not generic curiosity."
+      - "Questions make the candidate sound like they already understand the hard problems and strategy; comp/WLB/visa probes are kept out (those belong in for-myself/)."
+    failure_modes:
+      - "Generic questions ('What's the culture like?') with no product-specific grounding."
+      - "Missing the Hard-Problems or Moat/Growth group; comp/visa questions mixed in."
+    primary_metric: rubric_pass
+    efficiency_metrics: [total_tokens, wall_clock_s, tool_calls]
+
+  - id: cr-honest-scaffolding-fictional
+    requires_overlay: false
+    prompt: >
+      Research Example Corp for my Senior Software Engineer, Platform interview and gather the
+      offer-decision facts (funding, ratings, comp, visa).
+    setup: >
+      Default setup. Example Corp is the FICTIONAL company in the shipped example drafted app
+      (examples/applications/6_drafted/example-corp-senior-software-engineer/) — no real public
+      facts exist to find. Tests the never-fabricate rule.
+    expected_behavior:
+      - "Recognizes it cannot source real funding/ratings/valuation for a fictional company and SCAFFOLDS the for-myself/ files with '[unverified] — confirm' plus where-to-look (Crunchbase / Glassdoor / Levels / h1bdata.info / recruiter) instead of inventing numbers."
+      - "Never fabricates headcount, funding, ratings, or a Glassdoor score; visa is flagged '[unverified] — confirm with recruiter'."
+      - "Still builds the correct folder structure and draws honestly on the saved JD/meta for the role deep-dive (08) and whatever CAN be grounded."
+    failure_modes:
+      - "Invents funding rounds, a valuation, or a Glassdoor/Levels rating to fill the files."
+      - "Presents inferred facts as [confirmed], or silently skips the for-myself/ scaffolding."
+    primary_metric: rubric_pass
+    efficiency_metrics: [total_tokens, wall_clock_s, tool_calls]

@@ -1,0 +1,32 @@
+job_metadata_schema_version: 3
+company: "Example Corp"
+research_date: "2025-01-15"
+channel: ""
+referrer: ""
+next_action: "Example application — demonstrates the toolkit end to end"
+notes: "Fully fictional worked example shipped with the public toolkit."
+jobs:
+  - role: "Senior Software Engineer, Platform"
+    jd_file: "JD-senior-software-engineer-platform.md"
+    location: "Remote (US)"
+    workplace: "remote"
+    url: ""
+    posted_date: ""
+    sponsorship: "unknown"
+    fit: "strong"
+    job_level:
+      normalized: senior
+      min: 4.8
+      max: 5.5
+      confidence: medium
+      source: company_reference
+    required_yoe:
+      min: 5
+      max: 9
+      confidence: high
+      source: company_reference
+    salary_range:
+      min: 150000
+      max: 195000
+      confidence: high
+      source: company_reference

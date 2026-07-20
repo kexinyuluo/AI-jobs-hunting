@@ -1,0 +1,69 @@
+# Canary set — ask-me-anything skill
+# Grounded in .agents/skills/ask-me-anything/SKILL.md: the five-step workflow (0 Setup ->
+# 1 Profile & filters -> 2 Search -> 3 Generate -> 4 Review & track -> 5 Interview prep), the
+# repo structure, per-step dependencies, 'status is the folder', and the public vs private
+# (private/ overlay) model. This skill ORIENTS and routes — it does NOT do the work itself.
+# Run per evals/README.md; judge per evals/rubrics/judging.md.
+skill: ask-me-anything
+default_setup: >
+  config.yaml unset -> config.example.yaml + examples/** fallback (the 'Jordan Rivers' demo).
+  No network, no LibreOffice, no private overlay needed — these are orientation questions.
+
+canaries:
+  - id: ama-where-do-i-start
+    requires_overlay: false
+    prompt: "I just cloned this repo. How does it work and where do I start?"
+    setup: "Default setup."
+    expected_behavior:
+      - "Starts at Step 0 (install deps + `cp config.example.yaml config.yaml`) then Step 1 (profile & filters), in that order."
+      - "Names the global prerequisites concretely — a repo venv (`.venv/bin/python`), `requirements.txt` packages, LibreOffice (or Word + docx2pdf) for PDF, and an AI agent."
+      - "Explains the content/format split (AI edits content; a script renders format) and that without a config.yaml the toolkit falls back to the fake 'Jordan Rivers' example so everything runs out of the box."
+      - "Routes to the specialized skills for the actual work rather than doing the work itself."
+    failure_modes:
+      - "Jumps to searching/tailoring without the Step 0 config/deps setup."
+      - "Actually runs a search or tailor instead of explaining the process."
+    primary_metric: rubric_pass
+    efficiency_metrics: [total_tokens, wall_clock_s, tool_calls]
+
+  - id: ama-five-step-workflow
+    requires_overlay: false
+    prompt: "Walk me through the whole workflow from start to finish and which skill does each part."
+    setup: "Default setup."
+    expected_behavior:
+      - "Lays out the five steps in order and maps each to its skill — 1 Profile & filters -> job-search profile; 2 Search -> job-search; 3 Generate -> resume-writer; 4 Review & track -> application-tracker; 5 Interview prep -> company-research + behavioral-interview-prep (with Step 0 Setup as the one-time prerequisite)."
+      - "States 'status is the folder' — drafts land in 6_drafted/ and the USER moves the folder to 5_applied / 4_in_progress / 3_rejected / 2_ignored (the agent never moves it unless asked)."
+      - "Notes the per-step dependencies at the right altitude (e.g. Step 2 needs network + python-jobspy; Step 3 needs LibreOffice) without overloading."
+    failure_modes:
+      - "Wrong step order, or mis-assigns a skill to a step (e.g. resume-writer for search)."
+      - "Claims the agent auto-advances application status."
+    primary_metric: rubric_pass
+    efficiency_metrics: [total_tokens, wall_clock_s, tool_calls]
+
+  - id: ama-private-overlay
+    requires_overlay: false
+    prompt: "Where does my real personal data go, and why isn't the coding-interview skill here?"
+    setup: "Default setup."
+    expected_behavior:
+      - "Explains the public repo (timeless tooling + the fake example candidate) + an optional private overlay — real identity/applications/interviews mount under a git-ignored `private/` path that is its own git repo (`personal/` is the legacy alias)."
+      - "Says config.yaml is git-ignored and its paths point at the private overlay; real profile/baseline/reference DOCX and all applications/interviews stay private."
+      - "Explains the coding-interview skill ships ONLY with the private overlay, so it is not part of the public toolkit."
+      - "Points to the authoritative sources — AGENTS.md 'Public vs Private' and docs/PRIVATE_OVERLAY.md."
+    failure_modes:
+      - "Suggests committing real identity to the public repo, or says config.yaml is tracked."
+      - "Claims coding-interview is a public skill, or invents a different private-data location."
+    primary_metric: rubric_pass
+    efficiency_metrics: [total_tokens, wall_clock_s, tool_calls]
+
+  - id: ama-routing-and-deps
+    requires_overlay: false
+    prompt: "How do I find jobs, and do I need any API keys for it?"
+    setup: "Default setup."
+    expected_behavior:
+      - "Routes to Step 2 / the job-search skill and describes what it does (fetches live postings from 100+ ATS boards + keyless aggregators + JobSpy Indeed/Google, filters/ranks, writes a shortlist) — without running a search itself."
+      - "Answers the keys question correctly — NO keys for the default Stage 1 run; only optional Stage 2 (`--stage 2`) needs RAPIDAPI_KEY / ADZUNA_* env vars, and missing keys are skipped quietly."
+      - "Names the real dependency (network + python-jobspy in the venv) and points to .agents/skills/job-search/SKILL.md for the full flag set."
+    failure_modes:
+      - "Says API keys are required for basic search."
+      - "Executes an actual job search instead of orienting/routing."
+    primary_metric: rubric_pass
+    efficiency_metrics: [total_tokens, wall_clock_s, tool_calls]

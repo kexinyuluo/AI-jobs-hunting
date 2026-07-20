@@ -1,0 +1,127 @@
+#!/bin/sh
+# Pre-push leak guard for the jobs-finder toolkit.
+#
+# This is a COMBINED repo (public toolkit + the owner's private data side by side).
+# The whole safety model rests on ONE rule: this repo's private data must never
+# reach a PUBLIC remote. This hook enforces that at push time.
+#
+# WHAT IT DOES, and WHY it is layered this way:
+#
+#   1. Remote-visibility gate (primary protection). Look at the push destination:
+#        * GitHub remote + gh confirms PUBLIC   -> REFUSE the push. This combined
+#          repo must never be pushed to a public repo. (Publish the sanitized
+#          mirror with scripts/publish/export_public.py instead.)
+#        * GitHub remote + gh confirms PRIVATE  -> allow. This is the normal
+#          origin; private data legitimately lives there.
+#        * GitHub remote + gh missing/errors    -> WARN, allow. We cannot verify,
+#          but it is almost certainly the known-private origin; blocking would
+#          brick everyday pushes, so we do not.
+#        * Non-GitHub remote                    -> WARN loudly; we cannot verify
+#          visibility, so fall through to the content guard below.
+#
+#   2. Content leak guard (defense in depth). scripts/publish/check_public.py.
+#      It is run ONLY when the remote is NOT a confirmed-private origin (i.e. a
+#      non-GitHub remote we cannot introspect) AND it is armed with real identity
+#      tokens (config.yaml or a leak_tokens.txt). On a confirmed-private origin we
+#      deliberately SKIP it: the combined working tree still contains private data
+#      by design, so the guard would always fail there and running it would brick
+#      every push. The guard belongs on the exported PUBLIC mirror (where the tree
+#      is clean) and here only as a catch for pushes to unknown remotes.
+#
+# Manual override (reported loudly):  JOBHUNT_ALLOW_PUSH=1 git push ...
+#
+# Install once (tracked, no git-config change):
+#   ln -sf ../../hooks/pre-push .git/hooks/pre-push
+#
+# Bypass in an emergency with:  git push --no-verify
+set -e
+
+remote_name="$1"
+remote_url="$2"
+
+if [ "${JOBHUNT_ALLOW_PUSH:-}" = "1" ]; then
+    echo "pre-push: JOBHUNT_ALLOW_PUSH=1 set — SKIPPING all leak checks (manual override)." >&2
+    echo "pre-push: you are pushing WITHOUT the leak guard. Be certain the remote is private." >&2
+    exit 0
+fi
+
+# ── 1. Remote-visibility gate ────────────────────────────────────────────────
+# Parse "<owner>/<repo>" out of common GitHub remote URL shapes:
+#   git@github.com:owner/repo(.git)
+#   https://github.com/owner/repo(.git)
+#   ssh://git@github.com/owner/repo(.git)
+owner_repo=""
+case "$remote_url" in
+    *github.com[:/]*)
+        owner_repo=$(printf '%s\n' "$remote_url" \
+            | sed -E 's#^.*github\.com[:/]+##; s#\.git$##; s#/$##')
+        ;;
+esac
+
+# remote_confidence: private | unknown  (public exits immediately below)
+remote_confidence="unknown"
+
+if [ -n "$owner_repo" ]; then
+    if command -v gh >/dev/null 2>&1; then
+        is_private=$(gh repo view "$owner_repo" --json isPrivate --jq '.isPrivate' 2>/dev/null || echo "")
+        case "$is_private" in
+            false)
+                echo "pre-push: REFUSING push — remote '$owner_repo' is a PUBLIC GitHub repo." >&2
+                echo "pre-push: this combined repo must never be pushed to a public remote." >&2
+                echo "pre-push: publish the sanitized mirror via scripts/publish/export_public.py instead." >&2
+                exit 1
+                ;;
+            true)
+                echo "pre-push: remote '$owner_repo' is PRIVATE (verified via gh)."
+                remote_confidence="private"
+                ;;
+            *)
+                echo "pre-push: WARNING — could not verify visibility of '$owner_repo' via gh" >&2
+                echo "pre-push: (no auth / network?). Assuming the known-private origin; allowing." >&2
+                remote_confidence="private"
+                ;;
+        esac
+    else
+        echo "pre-push: WARNING — 'gh' not found; cannot verify that '$owner_repo' is private." >&2
+        echo "pre-push: assuming the known-private origin; allowing (install gh to enforce)." >&2
+        remote_confidence="private"
+    fi
+else
+    echo "pre-push: WARNING — non-GitHub remote '$remote_name' ($remote_url); cannot verify" >&2
+    echo "pre-push: its visibility. Running the content leak guard as a safety net." >&2
+    remote_confidence="unknown"
+fi
+
+# ── 2. Content leak guard (only for non-confirmed-private remotes) ────────────
+if [ "$remote_confidence" = "private" ]; then
+    echo "pre-push: confirmed-private origin — skipping the content leak guard"
+    echo "pre-push: (the combined tree holds private data by design; the guard runs"
+    echo "pre-push: on the exported PUBLIC mirror, not on pushes to this origin)."
+    echo "pre-push: OK"
+    exit 0
+fi
+
+# Non-confirmed-private remote: run the guard if it is armed with real tokens.
+if [ -f "config.yaml" ] || [ -f "private/leak_tokens.txt" ] || [ -f "personal/leak_tokens.txt" ]; then
+    PY=".venv/bin/python"
+    if [ ! -x "$PY" ]; then
+        PY="$(command -v python3 || command -v python)"
+    fi
+    if [ -z "$PY" ]; then
+        echo "pre-push: no python interpreter found to run the leak guard" >&2
+        exit 1
+    fi
+    echo "pre-push: running public leak guard (check_public.py) with real tokens..."
+    if ! "$PY" scripts/publish/check_public.py; then
+        echo "pre-push: REFUSING push — leak guard found violations for an unverified remote." >&2
+        echo "pre-push: fix them, or override knowingly with JOBHUNT_ALLOW_PUSH=1." >&2
+        exit 1
+    fi
+    echo "pre-push: leak guard PASSED."
+else
+    echo "pre-push: WARNING — unverified remote and the leak guard is not armed" >&2
+    echo "pre-push: (no config.yaml / leak_tokens.txt). Allowing, but make SURE this" >&2
+    echo "pre-push: remote is private, or arm the guard / set JOBHUNT_ALLOW_PUSH=1." >&2
+fi
+
+echo "pre-push: OK"

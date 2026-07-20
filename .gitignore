@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+# Scratch
+tmp/
+# Local machine config (copy config.example.yaml -> config.yaml and edit)
+config.yaml
+# Private overlay (personal data mounts here; never committed to the public repo).
+# ``private/`` is the canonical mount; ``personal/`` is the legacy name.
+private/
+personal/
+# Overlay-provided private skill routing (present only when overlay is mounted)
+.cursor/rules/private-skills.mdc
+# Per-skill private references (candidate-specific skill content; never shipped)
+.agents/skills/*/references_private/
+# Optional git-ignored personal token lists consumed by the leak guard
+private/leak_tokens.txt
+personal/leak_tokens.txt
+# Private products (present only if you work in-place in a combined checkout).
+# Anchored to the repo root so they never match the tracked examples/ dataset
+# (e.g. examples/applications/**, examples/templates/reference.example.docx).
+/applications/
+/interviews/
+/templates/
+/.agents/inputs/
+/.agents/skills/coding-interview/

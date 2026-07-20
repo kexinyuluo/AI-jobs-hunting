@@ -1,0 +1,71 @@
+# Canary set — application-tracker skill
+# Grounded in .agents/skills/application-tracker/{SKILL.md,LESSONS.md} (meta.yaml schema v3;
+# --check-metadata validates the drafted folder by default; no total_compensation_range; every
+# structured fact is {min,max,confidence,source}; jobs: is always a list). Uses the shipped
+# example drafted app. Run per evals/README.md; judge per evals/rubrics/judging.md.
+skill: application-tracker
+default_setup: >
+  config.yaml unset -> config.example.yaml + examples/** fallback. The example drafted app is
+  examples/applications/6_drafted/example-corp-senior-software-engineer/ with a valid v3
+  meta.yaml. No network, no LibreOffice, no private overlay needed (pyyaml only).
+
+canaries:
+  - id: at-pipeline-health
+    requires_overlay: false
+    prompt: "How's my pipeline looking? What needs my attention?"
+    setup: "Default setup. Runs status.py over the examples/applications tree."
+    expected_behavior:
+      - "Runs `.venv/bin/python .agents/skills/application-tracker/scripts/status.py` and reads status from the FOLDER each app lives in (drafted/applied/in_progress/rejected/ignored), not from any meta.yaml field."
+      - "Summarizes the funnel and highlights apps needing action (non-empty `next_action`) and stale ones (applied > ~2 weeks with no change)."
+      - "Does not move any folder or change any status (pipeline moves are the user's decision)."
+    failure_modes:
+      - "Reads a `status:` field from meta.yaml instead of using the folder."
+      - "Moves or 'advances' an application without being asked."
+    primary_metric: rubric_pass
+    efficiency_metrics: [total_tokens, wall_clock_s, tool_calls]
+
+  - id: at-validate-drafted-metadata
+    requires_overlay: false
+    prompt: "Validate the job metadata on my drafted applications before I render anything."
+    setup: "Default setup. Uses status.py --check-metadata (validates the drafted folder by default)."
+    expected_behavior:
+      - "Runs `status.py --check-metadata`; validation is strict schema v3 and by default only checks the `drafted` folder — other status folders are ignored unless explicitly targeted."
+      - "Confirms each meta.yaml is `job_metadata_schema_version: 3` with a `jobs:` LIST (even a single role is a one-element list), and rejects a legacy v2 file or a `total_compensation_range` key."
+      - "Confirms each jobs entry carries valid `workplace` + `sponsorship` words and complete `job_level` / `required_yoe` / `salary_range` structures ({min,max,confidence,source}; job_level adds `normalized`); `salary_range` may be null but the level/YOE structures must exist."
+      - "Confirms every jobs entry has a unique, existing basename-only `jd_file` and every JD-*.md maps to one role (no positional/sorted-filename fallback)."
+    failure_modes:
+      - "Validates all status folders by default, or accepts a v2 / total_compensation_range file."
+      - "Treats a null salary_range as invalid, or misses a missing/duplicate jd_file mapping."
+    primary_metric: rubric_pass
+    efficiency_metrics: [total_tokens, wall_clock_s, tool_calls]
+
+  - id: at-enrich-insert-only
+    requires_overlay: false
+    prompt: "Fill in the missing level, experience, and salary facts on this drafted application from the JD."
+    setup: >
+      Default setup with a drafted folder whose meta.yaml has empty placeholders ({} / '' / null)
+      for some structured facts and the full JD saved in source/. Uses status.py --enrich-metadata.
+    expected_behavior:
+      - "Runs `status.py --enrich-metadata <folder>` AFTER the JD is saved; uses the checksum-guarded, atomic, formatting-preserving editor (comments/quotes/blank-lines/CRLF survive)."
+      - "Inserts ONLY missing facts; populated or manually-edited facts are preserved (never round-trips meta.yaml through safe_dump)."
+      - "Never fabricates — unknown/unstated facts stay null / not_stated; JD facts win, the company-level cache is a level/YOE fallback only, salary comes from the posting."
+      - "Uses numbers (not '$185k') for bounds and treats a posting with no pay range as salary_range: null."
+    failure_modes:
+      - "Overwrites human-edited facts, or reformats the whole file via safe_dump."
+      - "Invents a salary/level/YOE that the JD does not state."
+    primary_metric: rubric_pass
+    efficiency_metrics: [total_tokens, wall_clock_s, tool_calls]
+
+  - id: at-status-move-on-request
+    requires_overlay: false
+    prompt: "I just submitted the Example Corp platform application — mark it as applied."
+    setup: "Default setup. The app currently sits in examples/applications/6_drafted/."
+    expected_behavior:
+      - "Changes status by MOVING the folder into the target status folder (drafted -> applied), e.g. `status.py --update <slug> applied`, because status is the folder."
+      - "Acts only because the user explicitly asked; does not add a `status:` field to meta.yaml."
+      - "Reminds the user to re-run `status.py --sync-log` so job-search skips the now-applied posting."
+    failure_modes:
+      - "Records status in meta.yaml instead of moving the folder."
+      - "Moves folders proactively / without an explicit request."
+    primary_metric: rubric_pass
+    efficiency_metrics: [total_tokens, wall_clock_s, tool_calls]

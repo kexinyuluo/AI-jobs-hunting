@@ -1,0 +1,166 @@
+#!/usr/bin/env python3
+"""Static instruction-file token-budget check (design doc §4, metric #6).
+
+Measures every ``AGENTS.md``, ``.agents/skills/*/SKILL.md``, ``LESSONS.md``, and
+``reference.md`` and reports lines / bytes / estimated tokens (bytes / 4). This
+is the "instruction_file_token_budget ... static anti-bloat guard" from
+``docs/design/harness-engineering-and-repo-evolution/05-harness-engineering-methodology.md``
+§4, and the file-size budget gate from §3 ("Self-evolution quality gates", gate
+#6: "Pre-commit cap on each SKILL.md/LESSONS.md; exceeding forces a
+consolidation pass, not an exception").
+
+Usage:
+    .venv/bin/python scripts/metrics/instruction_budget.py           # report + warn, exit 0
+    .venv/bin/python scripts/metrics/instruction_budget.py --strict  # exit 1 on any violation
+
+Default mode prints a table + any warnings and always exits 0 (measure-only, the
+P3 posture). ``--strict`` exits 1 on violations.
+
+The pre-commit hook invokes this in warn-only (default) mode today because
+``resume-writer/SKILL.md`` (957 lines) is knowingly over budget. P1 will slim
+the oversized instruction files and then flip the pre-commit invocation to
+``--strict`` so the budget becomes a hard gate.
+"""
+
+from __future__ import annotations
+
+import argparse
+import sys
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
+# Budgets from design doc §4. "Warn above" == the check flags the file; with
+# --strict it also exits non-zero. reference.md is measured for visibility but
+# has no hard budget yet, so it never triggers a warning.
+BUDGETS = {
+    "SKILL.md": 600,     # target <= 600 lines; warn above
+    "LESSONS.md": 160,   # <= 160 lines (~one lesson-bullet block); warn above
+    "AGENTS.md": 500,    # warn when > 500 lines
+}
+
+# Rough token estimate. English prose averages ~4 bytes/token; good enough for a
+# static bloat tripwire (design doc §4 uses token count as the budget unit).
+BYTES_PER_TOKEN = 4
+
+
+def _iter_targets(root: Path):
+    """Yield (kind, path) for each tracked instruction file we budget.
+
+    Targets live at known locations (repo-root AGENTS.md + per-skill files under
+    ``.agents/skills/*/``), so we glob those explicitly rather than walking the
+    tree — that keeps ``.venv``/``tmp``/gitignored ``references_private`` out.
+    """
+    for path in sorted(root.glob("AGENTS.md")):
+        yield ("AGENTS.md", path)
+
+    skills = root / ".agents" / "skills"
+    if skills.is_dir():
+        for path in sorted(skills.glob("*/AGENTS.md")):
+            yield ("AGENTS.md", path)
+        for name in ("SKILL.md", "LESSONS.md", "reference.md"):
+            for path in sorted(skills.glob(f"*/{name}")):
+                yield (name, path)
+
+
+def _measure(path: Path):
+    """Return (lines, bytes, est_tokens) for a file."""
+    data = path.read_bytes()
+    n_bytes = len(data)
+    # Line count = number of newline-terminated lines (matches ``wc -l``).
+    n_lines = data.count(b"\n")
+    if data and not data.endswith(b"\n"):
+        n_lines += 1
+    est_tokens = n_bytes // BYTES_PER_TOKEN
+    return n_lines, n_bytes, est_tokens
+
+
+def build_report(root: Path):
+    """Collect measurement rows and the list of budget violations."""
+    rows = []
+    violations = []
+    for kind, path in _iter_targets(root):
+        try:
+            n_lines, n_bytes, est_tokens = _measure(path)
+        except OSError:
+            continue
+        budget = BUDGETS.get(kind)
+        over = budget is not None and n_lines > budget
+        rows.append(
+            {
+                "kind": kind,
+                "path": path.relative_to(root).as_posix(),
+                "lines": n_lines,
+                "bytes": n_bytes,
+                "tokens": est_tokens,
+                "budget": budget,
+                "over": over,
+            }
+        )
+        if over:
+            violations.append(rows[-1])
+    return rows, violations
+
+
+def _format_table(rows) -> str:
+    header = ("FILE", "LINES", "BYTES", "~TOKENS", "BUDGET", "STATUS")
+    display = []
+    for r in rows:
+        budget = "-" if r["budget"] is None else str(r["budget"])
+        if r["budget"] is None:
+            status = "n/a"
+        elif r["over"]:
+            status = "OVER"
+        else:
+            status = "ok"
+        display.append(
+            (r["path"], str(r["lines"]), str(r["bytes"]), str(r["tokens"]), budget, status)
+        )
+
+    widths = [
+        max(len(header[i]), *(len(row[i]) for row in display)) if display else len(header[i])
+        for i in range(len(header))
+    ]
+
+    def fmt(cols):
+        # First column left-justified (file path); numeric columns right-justified.
+        cells = [cols[0].ljust(widths[0])]
+        cells += [cols[i].rjust(widths[i]) for i in range(1, len(cols))]
+        return "  ".join(cells)
+
+    lines = [fmt(header), fmt(tuple("-" * w for w in widths))]
+    lines += [fmt(row) for row in display]
+    return "\n".join(lines)
+
+
+def main(argv=None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="exit 1 on any budget violation (default: warn-only, exit 0)",
+    )
+    args = parser.parse_args(argv)
+
+    rows, violations = build_report(REPO_ROOT)
+
+    print("Instruction-file budget (lines; est. tokens = bytes / 4):")
+    print(_format_table(rows))
+
+    if violations:
+        print()
+        print(f"{len(violations)} file(s) over budget:")
+        for v in violations:
+            print(f"  ! {v['path']}: {v['lines']} lines > {v['budget']} budget")
+        if args.strict:
+            print("\nFAIL (--strict): instruction-file budget exceeded.")
+            return 1
+        print("\nWARN: over budget (warn-only; run with --strict to enforce).")
+    else:
+        print("\nOK: all instruction files within budget.")
+
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

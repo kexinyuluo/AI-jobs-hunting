@@ -1,0 +1,220 @@
+# Canonical company registry for the job-search skill — the single source of truth
+# for company IDENTITY, poll config, and the blacklist.
+#
+# Each POLLED entry: name, ats (greenhouse | ashby | lever | smartrecruiters |
+# workday | amazon | apple | meta), token (the board slug), and tags used by
+# profiles to select subsets. Tokens verified reachable 2026-07-10. Re-check with:
+#   .venv/bin/python .agents/skills/job-search/scripts/validate_companies.py
+#
+# The AI-native tag family — `ai-lab` (frontier/applied AI), `ai-infra` (AI/ML
+# infrastructure & data platforms), and `ai-native` (AI-first products whose core
+# IS AI but that also fit another category) — marks employers as AI-native /
+# AI-transitioning. Profiles' `ai_company.company_tags` reads this family to boost
+# (or, with --ai-native-only, hard-filter to) "infra role AT an AI-native company".
+#
+# Optional per-entry keys (read by scripts/registry.py):
+#   aliases: [..]     extra match strings, only where identity drifts (the resolver
+#                     already derives match keys from `name` + `token`, so most
+#                     entries need none; add when a board name != aggregator name,
+#                     e.g. Arize / "Arize AI").
+#   blacklist: "..."  presence means NEVER consider this company; the string is the
+#                     reason (for your own records). Applies everywhere (company
+#                     boards AND aggregator hits), matched via name/aliases/token.
+#
+# IDENTITY-ONLY rows carry name + aliases + blacklist and OMIT ats/token: companies
+# we never poll but still want to exclude (e.g. aggregator-surfaced employers).
+# validate_companies.py and the fetch pipeline skip any row without `ats`.
+#
+# NOTE: company boards are ONE source. For market-wide coverage the skill also
+# queries keyword aggregators (Arbeitnow, Jobicy, RemoteOK, The Muse) and, when
+# API keys are set, Adzuna / JSearch (LinkedIn+Indeed) — see SKILL.md + reference.md.
+#
+# To add a company: find its ATS board slug (the path segment in its careers URL,
+# e.g. boards.greenhouse.io/<slug>, jobs.ashbyhq.com/<slug>, jobs.lever.co/<slug>),
+# add an entry with tags, then run validate_companies.py. Tokens are often but not
+# always the lowercased name (Glean=gleanwork, Scale AI=scaleai, Navan=tripactions).
+
+companies:
+  # ---- AI labs / frontier & applied AI ----
+  - {name: Anthropic, ats: greenhouse, token: anthropic, tags: [ai-lab, ai-infra]}
+  - {name: OpenAI, ats: ashby, token: openai, tags: [ai-lab, ai-infra]}
+  - {name: xAI, ats: greenhouse, token: xai, tags: [ai-lab]}
+  - {name: DeepMind, ats: greenhouse, token: deepmind, tags: [ai-lab]}
+  - {name: Cohere, ats: ashby, token: cohere, tags: [ai-lab]}
+  - {name: Perplexity, ats: ashby, token: perplexity, tags: [ai-lab, dev-tools]}
+  - {name: Cognition, ats: ashby, token: cognition, tags: [ai-lab, dev-tools]}
+  - {name: Sierra, ats: ashby, token: sierra, tags: [ai-lab]}
+  - {name: Harvey, ats: ashby, token: harvey, tags: [ai-lab]}
+  - {name: ElevenLabs, ats: ashby, token: elevenlabs, tags: [ai-lab]}
+  - {name: Writer, ats: ashby, token: writer, tags: [ai-lab]}
+  - {name: Decagon, ats: ashby, token: decagon, tags: [ai-lab]}
+  - {name: Cresta, ats: greenhouse, token: cresta, tags: [ai-lab]}
+  - {name: Braintrust, ats: ashby, token: braintrust, tags: [ai-lab]}
+  - {name: Character.AI, ats: ashby, token: character, tags: [ai-lab]}
+  - {name: LangChain, ats: ashby, token: langchain, tags: [ai-lab, dev-tools, smb-fav]}
+  - {name: Physical Intelligence, ats: ashby, token: physicalintelligence, tags: [ai-lab]}
+  - {name: Poolside, ats: ashby, token: poolside, tags: [ai-lab]}
+  - {name: Suno, ats: ashby, token: suno, tags: [ai-lab]}
+  - {name: Runway, ats: ashby, token: runway, tags: [ai-lab]}
+  - {name: Figure AI, ats: greenhouse, token: figure, tags: [ai-lab]}
+  - {name: Snorkel AI, ats: greenhouse, token: snorkelai, tags: [ai-lab]}
+  - {name: Inflection, ats: greenhouse, token: inflectionai, tags: [ai-lab]}
+  - {name: Stability AI, ats: greenhouse, token: stabilityai, tags: [ai-lab]}
+  - {name: Typeface, ats: greenhouse, token: typeface, tags: [ai-lab]}
+  - {name: Descript, ats: greenhouse, token: descript, tags: [ai-lab]}
+  - {name: Turing, ats: greenhouse, token: turing, tags: [ai-lab]}
+  - {name: Imbue, ats: greenhouse, token: imbue, tags: [ai-lab, ai-infra]}
+
+  # ---- AI infrastructure / ML platform / data ----
+  - {name: Databricks, ats: greenhouse, token: databricks, tags: [ai-infra, data-platform]}
+  - {name: Snowflake, ats: ashby, token: snowflake, tags: [ai-infra, data-platform]}
+  - {name: CoreWeave, ats: greenhouse, token: coreweave, tags: [ai-infra]}
+  - {name: Nebius, ats: greenhouse, token: nebius, tags: [ai-infra]}
+  - {name: Together AI, ats: greenhouse, token: togetherai, tags: [ai-infra]}
+  - {name: Fireworks AI, ats: greenhouse, token: fireworksai, tags: [ai-infra]}
+  - {name: Modal, ats: ashby, token: modal, tags: [ai-infra, dev-tools]}
+  - {name: Baseten, ats: ashby, token: baseten, tags: [ai-infra]}
+  - {name: Anyscale, ats: ashby, token: anyscale, tags: [ai-infra]}
+  - {name: RunPod, ats: ashby, token: runpod, tags: [ai-infra]}
+  - {name: Scale AI, ats: greenhouse, token: scaleai, tags: [ai-infra]}
+  - {name: Pinecone, ats: ashby, token: pinecone, tags: [ai-infra]}
+  - {name: Arize, ats: greenhouse, token: arizeai, aliases: [arize ai], tags: [ai-infra]}
+  - {name: Comet, ats: greenhouse, token: comet, tags: [ai-infra]}
+  - {name: Labelbox, ats: greenhouse, token: labelbox, tags: [ai-infra]}
+  - {name: Lightning AI, ats: greenhouse, token: lightningai, tags: [ai-infra]}
+  - {name: Domino Data Lab, ats: greenhouse, token: dominodatalab, tags: [ai-infra]}
+  - {name: Glean, ats: greenhouse, token: gleanwork, tags: [ai-infra, dev-tools]}
+  - {name: ClickHouse, ats: greenhouse, token: clickhouse, tags: [data-platform, ai-infra]}
+  - {name: Fivetran, ats: greenhouse, token: fivetran, tags: [data-platform, ai-infra, smb-fav]}
+  - {name: SingleStore, ats: greenhouse, token: singlestore, tags: [data-platform, ai-infra]}
+  - {name: Confluent, ats: ashby, token: confluent, tags: [data-platform, dev-tools]}
+  - {name: Airbyte, ats: ashby, token: airbyte, tags: [data-platform, dev-tools]}
+  - {name: Hightouch, ats: greenhouse, token: hightouch, tags: [data-platform]}
+  - {name: Starburst, ats: greenhouse, token: starburst, tags: [data-platform]}
+  - {name: Collibra, ats: greenhouse, token: collibra, tags: [data-platform]}
+  - {name: Prefect, ats: ashby, token: prefect, tags: [data-platform, dev-tools]}
+  - {name: Pure Storage, ats: greenhouse, token: purestorage, tags: [ai-infra]}
+
+  # ---- Developer tools / infra / platform ----
+  - {name: Cursor, ats: ashby, token: cursor, tags: [dev-tools, ai-infra]}
+  - {name: Replit, ats: ashby, token: replit, tags: [dev-tools, ai-native]}   # AI-first coding agent
+  - {name: Vercel, ats: greenhouse, token: vercel, tags: [dev-tools]}
+  - {name: Netlify, ats: greenhouse, token: netlify, tags: [dev-tools]}
+  - {name: Render, ats: ashby, token: render, tags: [dev-tools]}
+  - {name: Railway, ats: ashby, token: railway, tags: [dev-tools]}
+  - {name: Supabase, ats: ashby, token: supabase, tags: [dev-tools]}
+  - {name: Neon, ats: ashby, token: neon, tags: [dev-tools, smb-fav]}
+  - {name: PlanetScale, ats: greenhouse, token: planetscale, tags: [dev-tools, smb-fav]}
+  - {name: Cockroach Labs, ats: greenhouse, token: cockroachlabs, tags: [dev-tools]}
+  - {name: MongoDB, ats: greenhouse, token: mongodb, tags: [dev-tools]}
+  - {name: Datadog, ats: greenhouse, token: datadog, tags: [bigtech, dev-tools]}
+  - {name: Grafana Labs, ats: greenhouse, token: grafanalabs, tags: [dev-tools]}
+  - {name: Honeycomb, ats: greenhouse, token: honeycomb, tags: [dev-tools]}
+  - {name: New Relic, ats: greenhouse, token: newrelic, tags: [dev-tools]}
+  - {name: Elastic, ats: greenhouse, token: elastic, tags: [dev-tools]}
+  - {name: Cloudflare, ats: greenhouse, token: cloudflare, tags: [bigtech, dev-tools]}
+  - {name: Fastly, ats: greenhouse, token: fastly, tags: [dev-tools]}
+  - {name: Tailscale, ats: greenhouse, token: tailscale, tags: [dev-tools]}
+  - {name: Temporal, ats: ashby, token: temporal, tags: [dev-tools]}
+  - {name: Sentry, ats: ashby, token: sentry, tags: [dev-tools]}
+  - {name: PostHog, ats: ashby, token: posthog, tags: [dev-tools]}
+  - {name: Linear, ats: ashby, token: linear, tags: [dev-tools, smb-fav]}
+  - {name: Notion, ats: ashby, token: notion, tags: [dev-tools]}
+  - {name: Figma, ats: greenhouse, token: figma, tags: [dev-tools]}
+  - {name: GitLab, ats: greenhouse, token: gitlab, tags: [dev-tools]}
+  - {name: Postman, ats: greenhouse, token: postman, tags: [dev-tools]}
+  - {name: WorkOS, ats: ashby, token: workos, tags: [dev-tools]}
+  - {name: Warp, ats: greenhouse, token: warp, tags: [dev-tools, ai-native]}   # AI-native terminal/agent
+  - {name: Buildkite, ats: greenhouse, token: buildkite, tags: [dev-tools]}
+  - {name: CircleCI, ats: greenhouse, token: circleci, tags: [dev-tools]}
+  - {name: LaunchDarkly, ats: greenhouse, token: launchdarkly, tags: [dev-tools]}
+  - {name: Okta, ats: greenhouse, token: okta, tags: [dev-tools]}
+  - {name: Twilio, ats: greenhouse, token: twilio, tags: [dev-tools]}
+  - {name: Airtable, ats: greenhouse, token: airtable, tags: [dev-tools]}
+  - {name: Asana, ats: greenhouse, token: asana, tags: [bigtech, dev-tools]}
+  - {name: Amplitude, ats: greenhouse, token: amplitude, tags: [dev-tools]}
+  - {name: Mixpanel, ats: greenhouse, token: mixpanel, tags: [dev-tools]}
+  - {name: Benchling, ats: ashby, token: benchling, tags: [dev-tools]}
+  - {name: Contentful, ats: greenhouse, token: contentful, tags: [dev-tools]}
+  - {name: Webflow, ats: greenhouse, token: webflow, tags: [dev-tools]}
+  - {name: Prisma, ats: greenhouse, token: prisma, tags: [dev-tools]}
+  - {name: Inngest, ats: ashby, token: inngest, tags: [dev-tools]}
+  - {name: Descope, ats: greenhouse, token: descope, tags: [dev-tools]}
+  - {name: Clerk, ats: ashby, token: clerk, tags: [dev-tools, smb-fav]}   # currently 0 listed roles (2026-07)
+  - {name: Customer.io, ats: greenhouse, token: customerio, tags: [dev-tools]}
+  - {name: Iterable, ats: greenhouse, token: iterable, tags: [dev-tools]}
+  - {name: Braze, ats: greenhouse, token: braze, tags: [dev-tools]}
+  - {name: Rubrik, ats: greenhouse, token: rubrik, tags: [dev-tools]}
+  - {name: Zscaler, ats: greenhouse, token: zscaler, tags: [dev-tools]}
+
+  # ---- Fintech (visa-friendly larger tech) ----
+  - {name: Stripe, ats: greenhouse, token: stripe, tags: [fintech]}
+  - {name: Ramp, ats: ashby, token: ramp, tags: [fintech]}
+  - {name: Brex, ats: greenhouse, token: brex, tags: [fintech]}
+  - {name: Plaid, ats: ashby, token: plaid, tags: [fintech]}
+  - {name: Block, ats: greenhouse, token: block, tags: [bigtech, fintech]}
+  - {name: Affirm, ats: greenhouse, token: affirm, tags: [fintech]}
+  - {name: Coinbase, ats: greenhouse, token: coinbase, tags: [fintech]}
+  - {name: Robinhood, ats: greenhouse, token: robinhood, tags: [bigtech, fintech]}
+  - {name: Mercury, ats: greenhouse, token: mercury, tags: [fintech]}
+  - {name: Chime, ats: greenhouse, token: chime, tags: [fintech]}
+  - {name: Gusto, ats: greenhouse, token: gusto, tags: [fintech]}
+  - {name: Carta, ats: greenhouse, token: carta, tags: [fintech]}
+  - {name: Checkr, ats: greenhouse, token: checkr, tags: [fintech]}
+  - {name: Marqeta, ats: greenhouse, token: marqeta, tags: [fintech]}
+  - {name: SoFi, ats: greenhouse, token: sofi, tags: [bigtech, fintech]}
+  - {name: Navan, ats: greenhouse, token: tripactions, tags: [fintech]}
+  - {name: Adyen, ats: greenhouse, token: adyen, tags: [fintech]}
+
+  # ---- Consumer / autonomy / other high-value tech ----
+  - {name: Airbnb, ats: greenhouse, token: airbnb, tags: [bigtech, consumer]}
+  - {name: Reddit, ats: greenhouse, token: reddit, tags: [consumer]}
+  - {name: Discord, ats: greenhouse, token: discord, tags: [bigtech, consumer]}
+  - {name: Dropbox, ats: greenhouse, token: dropbox, tags: [consumer]}
+  - {name: Instacart, ats: greenhouse, token: instacart, tags: [consumer]}
+  - {name: Duolingo, ats: greenhouse, token: duolingo, tags: [bigtech, consumer]}
+  - {name: Roblox, ats: greenhouse, token: roblox, tags: [bigtech, consumer]}
+  - {name: Epic Games, ats: greenhouse, token: epicgames, tags: [bigtech, consumer]}
+  - {name: Riot Games, ats: greenhouse, token: riotgames, tags: [bigtech, consumer]}
+  - {name: Samsara, ats: greenhouse, token: samsara, tags: [consumer]}
+  - {name: Waymo, ats: greenhouse, token: waymo, tags: [consumer, ai-native]}   # autonomous driving (AI-native)
+  - {name: Nuro, ats: greenhouse, token: nuro, tags: [bigtech, consumer, ai-native]}
+  - {name: Zoox, ats: lever, token: zoox, tags: [bigtech, consumer, ai-native]}
+  - {name: Shield AI, ats: lever, token: shieldai, tags: [ai-lab, consumer]}
+  - {name: Palantir, ats: lever, token: palantir, tags: [data-platform, bigtech, ai-native]}   # AIP / AI-forward platform
+  - {name: Spotify, ats: lever, token: spotify, tags: [bigtech, consumer]}
+
+  # ---- Big tech / large public tech (added 2026-07-16) ----
+  # Fetched via bespoke fetchers (workday CXS / amazon.jobs / apple / meta) plus a
+  # few SmartRecruiters/Greenhouse boards. Configs verified reachable 2026-07-16.
+  # Workday entries need host + site in addition to token (the Workday tenant).
+  - {name: Amazon, ats: amazon, token: amazon, tags: [bigtech, consumer]}
+  - {name: NVIDIA, ats: workday, token: nvidia, host: nvidia.wd5.myworkdayjobs.com, site: NVIDIAExternalCareerSite, tags: [bigtech, semiconductor, ai-infra]}
+  - {name: Apple, ats: apple, token: apple, tags: [bigtech]}
+  - {name: Meta, ats: meta, token: meta, tags: [bigtech]}
+  - {name: Intel, ats: workday, token: intel, host: intel.wd1.myworkdayjobs.com, site: External, tags: [bigtech, semiconductor]}
+  - {name: Micron, ats: workday, token: micron, host: micron.wd1.myworkdayjobs.com, site: External, tags: [bigtech, semiconductor]}
+  - {name: Marvell, ats: workday, token: marvell, host: marvell.wd1.myworkdayjobs.com, site: MarvellCareers, tags: [bigtech, semiconductor]}
+  - {name: Analog Devices, ats: workday, token: analogdevices, host: analogdevices.wd1.myworkdayjobs.com, site: External, tags: [bigtech, semiconductor]}
+  - {name: Applied Materials, ats: workday, token: amat, host: amat.wd1.myworkdayjobs.com, site: External, tags: [bigtech, semiconductor]}
+  - {name: Western Digital, ats: smartrecruiters, token: WesternDigital, tags: [bigtech, semiconductor]}
+  - {name: HPE, ats: workday, token: hpe, host: hpe.wd5.myworkdayjobs.com, site: Jobsathpe, tags: [bigtech, enterprise-infra]}
+  - {name: F5, ats: workday, token: ffive, host: ffive.wd5.myworkdayjobs.com, site: f5jobs, tags: [bigtech, enterprise-infra]}
+  - {name: Palo Alto Networks, ats: workday, token: paloaltonetworks, host: paloaltonetworks.wd5.myworkdayjobs.com, site: panwexternalcareers, tags: [bigtech, enterprise-infra]}
+  - {name: CrowdStrike, ats: workday, token: crowdstrike, host: crowdstrike.wd5.myworkdayjobs.com, site: crowdstrikecareers, tags: [bigtech, enterprise-infra]}
+  - {name: Arista Networks, ats: smartrecruiters, token: aristanetworks, tags: [bigtech, enterprise-infra]}
+  - {name: Autodesk, ats: workday, token: autodesk, host: autodesk.wd1.myworkdayjobs.com, site: Ext, tags: [bigtech, saas]}
+  - {name: Workday, ats: workday, token: workday, host: workday.wd5.myworkdayjobs.com, site: Workday, tags: [bigtech, saas]}
+  - {name: PayPal, ats: workday, token: paypal, host: paypal.wd1.myworkdayjobs.com, site: Jobs, tags: [bigtech, fintech]}
+  - {name: eBay, ats: workday, token: ebay, host: ebay.wd5.myworkdayjobs.com, site: apply, tags: [bigtech, consumer]}
+  - {name: Unity, ats: workday, token: unitytech, host: unitytech.wd1.myworkdayjobs.com, site: Unity, tags: [bigtech, gaming]}
+  - {name: Activision Blizzard, ats: workday, token: xboxgaming, host: xboxgaming.wd1.myworkdayjobs.com, site: CentralTech, tags: [bigtech, gaming]}
+  - {name: Smartsheet, ats: greenhouse, token: smartsheet, tags: [bigtech, saas]}
+
+  # ---- Blacklist ----
+  # The PUBLIC registry ships identity + poll config only — it carries NO personal
+  # skip rules. Candidate-specific blacklist rows (companies that don't sponsor, the
+  # candidate's own employer, etc.) live in a git-ignored overlay merged at load time
+  # by scripts/registry.py: `personal/job-search/blacklist.yaml`. Each overlay row is
+  # an identity-only entry (name + optional aliases + a `blacklist:` reason, no
+  # ats/token) and is dropped from results wherever the company surfaces.

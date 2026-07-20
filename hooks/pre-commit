@@ -1,0 +1,41 @@
+#!/bin/sh
+# Pre-commit guard for the jobs-finder toolkit.
+#
+# Blocks a commit when:
+#   1. a vendored copy has drifted from its canonical source
+#      (see scripts/vendoring/sync_vendored.py + .../job-search/scripts/_vendor/), or
+#   2. any toolkit/skill Python file fails to byte-compile.
+#
+# Install once (tracked, no git-config change):
+#   ln -sf ../../hooks/pre-commit .git/hooks/pre-commit
+#
+# Bypass in an emergency with:  git commit --no-verify
+set -e
+
+# Prefer the repo venv; fall back to system python3.
+PY=".venv/bin/python"
+if [ ! -x "$PY" ]; then
+    PY="$(command -v python3 || command -v python)"
+fi
+if [ -z "$PY" ]; then
+    echo "pre-commit: no python interpreter found" >&2
+    exit 1
+fi
+
+echo "pre-commit: checking vendored copies are in sync..."
+"$PY" scripts/vendoring/sync_vendored.py --check
+
+echo "pre-commit: byte-compiling scripts + self-contained skills..."
+"$PY" -m compileall -q scripts \
+    .agents/skills/job-search/scripts \
+    .agents/skills/resume-writer/scripts \
+    .agents/skills/application-tracker/scripts
+
+# Instruction-file token-budget check (design doc 05 §4). WARN-ONLY today: an
+# oversized SKILL.md must not block commits yet. `|| true` guarantees this step
+# never changes the hook's exit status under `set -e`. P1 will slim the
+# instruction files and then switch this to `--strict` to make it a hard gate.
+echo "pre-commit: instruction-file budget (warn-only)..."
+"$PY" scripts/metrics/instruction_budget.py || true
+
+echo "pre-commit: OK"
