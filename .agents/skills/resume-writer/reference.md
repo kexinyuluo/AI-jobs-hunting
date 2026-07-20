@@ -147,9 +147,12 @@ an essay. **Exactly two paragraphs**, each opening with a one-sentence summary t
 
 A plain-English answer for portal "describe your relevant experience / tell us about your
 background" boxes. Lead with the current role and scope, then summarize the most
-JD-relevant projects and impact in prose. Draw only on real content from the profile /
-`tailored.yaml` / supporting library; mirror the JD's terminology where honest. Keep it
-tight (a lead paragraph plus a few short project paragraphs).
+JD-relevant achievements across prior roles and named projects in prose. A multi-employer
+resume is still a career narrative, not a company-by-company transcript: include older work
+only when it strengthens this JD's fit, while keeping employer/project ownership accurate.
+Draw only on real content from the profile / `tailored.yaml` / supporting library; mirror
+the JD's terminology where honest. Keep it tight (a lead paragraph plus a few short
+experience/project paragraphs).
 
 ### APPLICATION QUESTIONS section (answer the portal's actual questions when you can see them)
 
