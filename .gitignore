@@ -10,6 +10,8 @@ config.yaml
 .claude/settings.local.json
 # Local metrics collection output (opt-in metrics hooks; see docs/METRICS.md)
 logs/
+# Cross-session scratch memory (ephemeral; see AGENTS.md Memory Map)
+.cursor/MEMORY.md
 # Private overlay (personal data mounts here; never committed to the public repo).
 # ``private/`` is the canonical mount; ``personal/`` is the legacy name.
 private/
