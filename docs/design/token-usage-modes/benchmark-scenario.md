@@ -1,10 +1,14 @@
-# Benchmark scenario (v1.1) — one search + two drafted applications
+# Benchmark scenario (v1.2) — one search + two drafted applications
 
 **Status:** pinned (2026-07-20; v1.1 same day — the first v1 attempt was
 invalidated when the day's heavily pre-mined pipeline state yielded zero
 eligible candidates, so v1.1 pins the run *independent of mutable pipeline
 state*; an invalidated attempt is recorded in the results file but its tokens
-never enter a row). This is the fixed, testable definition of the
+never enter a row. v1.2 same day adds the **Isolation** section below after a
+benchmark run was found writing its drafts, discoveries, and logs into the
+owner's real pipeline — the run must instead select a dedicated benchmark
+config so every write lands in an isolated overlay area). This is the fixed,
+testable definition of the
 token-usage benchmark. Every future row in the README table and every stage
 gate compares against a run of *this* scenario, like-for-like. The Stage-1
 result (`evals/results/stage1-benchmark-20260720.md`) rose +15% partly because
@@ -21,6 +25,33 @@ deltas against that reference.
 invalidates comparison with every prior row — re-baseline the reference before
 comparing. Implementation/verification of code may use a higher tier; the
 measured subject agents run the pinned mid-tier.
+
+## Isolation — benchmark writes never touch the real pipeline
+
+A benchmark run **MUST** select a dedicated benchmark configuration by pointing
+the toolkit's config environment variable (`JOBHUNT_CONFIG`) at it before the
+run. That config is a copy of the real one with a single difference: every
+**write** path — the applications root, the discoveries directory, and the
+derived state that lives beneath the applications root (logs, metrics, the
+tailoring card) — resolves into an **isolated benchmark area of the private
+overlay**, while the **read-only candidate sources** (profile, baseline,
+reference resume, and any read-only leveling cache) keep pointing at the real
+files so the run stays realistic. The benchmark profile copy lives in that same
+isolated area.
+
+Consequences, by design:
+
+- **Benchmark artifacts never enter the real pipeline.** Drafts, discovery
+  scans, and any auto-written logs land under the isolated area, so the owner's
+  real folders and logs stay clean — nothing from a benchmark run is committed
+  or auto-logged into the real pipeline.
+- **The real pipeline's duplicate scan intentionally does NOT see benchmark
+  drafts.** The folder-based duplicate check (§1) keys off the folders under the
+  *active* config's applications root. Under the benchmark config it sees only
+  prior benchmark drafts — so a benchmark run may re-draft a posting the real
+  pipeline never handled, and conversely a real run is never blocked by a
+  posting that exists only as a benchmark draft. Each pipeline gates against its
+  own history.
 
 ## 1. Search — exactly one search subagent, one profile
 
