@@ -93,6 +93,20 @@ class DraftOnlyGraphClientTests(unittest.TestCase):
         self.assertIn("/mailFolders/sentitems/messages?", transport.calls[0][1])
         self.assertIn("sentDateTime+desc", transport.calls[0][1])
 
+    def test_folder_listing_paginates_beyond_graph_page_size(self):
+        first_page = [{"id": f"message-{index}"} for index in range(50)]
+        second_page = [{"id": f"message-{index}"} for index in range(50, 70)]
+        transport = FakeTransport([{"value": first_page}, {"value": second_page}])
+        client = DraftOnlyGraphClient("token", transport=transport)
+
+        messages = client.list_inbox(70)
+
+        self.assertEqual(len(messages), 70)
+        self.assertEqual([call[0] for call in transport.calls], ["GET", "GET"])
+        self.assertIn("%24top=50", transport.calls[0][1])
+        self.assertIn("%24top=20", transport.calls[1][1])
+        self.assertIn("%24skip=50", transport.calls[1][1])
+
     def test_later_sent_reply_blocks_duplicate_draft_before_write(self):
         transport = FakeTransport(
             [
@@ -118,6 +132,44 @@ class DraftOnlyGraphClientTests(unittest.TestCase):
         with self.assertRaisesRegex(DraftPolicyError, "Sent reply already exists"):
             client.create_reply_draft(source_message_id="message-1", body_text="Duplicate")
         self.assertEqual([call[0] for call in transport.calls], ["GET", "GET", "GET"])
+
+    def test_reply_preflight_finds_sent_reply_beyond_first_page(self):
+        first_sent_page = [
+            {
+                "id": f"sent-{index}",
+                "sentDateTime": "2026-07-20T09:00:00Z",
+                "conversationId": f"other-{index}",
+            }
+            for index in range(50)
+        ]
+        transport = FakeTransport(
+            [
+                {
+                    "id": "message-1",
+                    "receivedDateTime": "2026-07-20T10:00:00Z",
+                    "isDraft": False,
+                    "conversationId": "conversation-1",
+                },
+                {"value": first_sent_page},
+                {
+                    "value": [
+                        {
+                            "id": "sent-later",
+                            "sentDateTime": "2026-07-20T10:05:00Z",
+                            "conversationId": "conversation-1",
+                        }
+                    ]
+                },
+                {"value": []},
+            ]
+        )
+        client = DraftOnlyGraphClient("token", transport=transport)
+
+        with self.assertRaisesRegex(DraftPolicyError, "Sent reply already exists"):
+            client.create_reply_draft(source_message_id="message-1", body_text="Duplicate")
+
+        self.assertEqual([call[0] for call in transport.calls], ["GET", "GET", "GET", "GET"])
+        self.assertIn("%24skip=50", transport.calls[2][1])
 
     def test_existing_thread_draft_blocks_duplicate_draft_before_write(self):
         transport = FakeTransport(
