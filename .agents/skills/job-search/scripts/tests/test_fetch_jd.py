@@ -285,6 +285,84 @@ We analyze product metrics and build dashboards for the growth team.
 - 3 years of SQL and Python.
 """
 
+# Real scraped-ATS shape: nav chrome above the <h1>, a terse workplace line, and the
+# true (foreign) location ONLY under an "Available Locations" heading with NO colon
+# (so extract_jd_locations never sees it) plus prose that contains foreign SUBSTRINGS
+# inside ordinary words ("Indiana", "capacity", "comparison") that must NOT false-fire.
+JD_ATS_FOREIGN = """Back to jobs
+
+# Principal Solutions Engineer, SAARC (Based in Bangalore)
+
+Hybrid or Remote
+
+Apply
+
+## Available Locations
+
+- Bengaluru, India
+- India
+
+## About the role
+Our analytical capacity supports detailed comparison across the Indiana market.
+
+## Equal Opportunity
+All qualified applicants will be considered for employment without regard to race,
+color, religion, national origin, ancestry, citizenship, age, or disability.
+"""
+
+
+class DigestHardeningTests(unittest.TestCase):
+    def _digest(self, text: str) -> str:
+        return fetch_jd.build_digest(
+            text, jd_path="/x/JD.md", byte_count=len(text.encode("utf-8")))
+
+    def test_title_prefers_h1_over_nav_chrome(self):
+        d = self._digest(JD_ATS_FOREIGN)
+        # The real <h1> is titled, NOT the "Back to jobs" breadcrumb above it.
+        self.assertIn("TITLE: Principal Solutions Engineer, SAARC (Based in Bangalore)", d)
+        self.assertNotIn("TITLE: Back to jobs", d)
+        self.assertIn("principal", d)  # level resolves off the real title
+
+    def test_available_locations_block_is_surfaced(self):
+        # The colon-less "Available Locations" bullet block — which
+        # extract_jd_locations cannot parse — is surfaced so the FOREIGN signal is in
+        # the digest itself, not only reachable by opening the full JD.
+        d = self._digest(JD_ATS_FOREIGN)
+        workplace_block = d.split("WORKPLACE/LOCATION SIGNAL LINES")[1].split(
+            "VISA/SPONSORSHIP")[0]
+        self.assertIn("Available Locations", workplace_block)
+        self.assertIn("Bengaluru, India", workplace_block)
+        self.assertIn("- India", workplace_block)
+
+    def test_foreign_tokens_match_on_word_boundaries_only(self):
+        # "Indiana" / "capacity" / "comparison" contain the substrings india/apac/paris
+        # but are NOT locations — the word-boundary scan must not flag that prose line.
+        d = self._digest(JD_ATS_FOREIGN)
+        workplace_block = d.split("WORKPLACE/LOCATION SIGNAL LINES")[1].split(
+            "VISA/SPONSORSHIP")[0]
+        self.assertNotIn("analytical capacity", workplace_block)
+        self.assertNotIn("Indiana market", workplace_block)
+
+    def test_eeo_boilerplate_dropped_from_visa_but_real_denial_kept(self):
+        jd = (
+            "# Software Engineer\n\n"
+            "Location: Remote (US)\n\n"
+            "## Eligibility\n"
+            "This position is open to US citizens only.\n\n"
+            "## Equal Opportunity\n"
+            "All qualified applicants will be considered for employment without "
+            "regard to race, color, religion, national origin, ancestry, "
+            "citizenship, age, or disability.\n"
+        )
+        d = self._digest(jd)
+        visa_block = d.split("VISA/SPONSORSHIP SENTENCES")[1]
+        # Real citizenship-requirement denial is kept ...
+        self.assertIn("open to US citizens only", visa_block)
+        # ... but the EEO "citizenship as a protected class" boilerplate is dropped.
+        self.assertNotIn("without\n  regard to", d)
+        self.assertNotIn("protected", visa_block.lower())
+        self.assertNotIn("qualified applicants", visa_block)
+
 
 class DigestBuilderTests(unittest.TestCase):
     def _digest(self, text: str, *, path="/apps/6_drafted/x/source/JD-role.md") -> str:

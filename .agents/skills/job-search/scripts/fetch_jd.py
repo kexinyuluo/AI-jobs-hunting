@@ -226,6 +226,35 @@ _VISA_KW_RE = re.compile(
 # Split a line into sentences on terminal punctuation (kept with the sentence).
 _SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?])\s+")
 
+# Equal-opportunity boilerplate lists "citizenship" as a PROTECTED CLASS, not a
+# sponsorship requirement — it appears in nearly every US JD and would otherwise
+# dominate the visa section. A sentence hitting one of these EEO markers with NO
+# strong sponsorship term is dropped from the visa locator (a real denial like "US
+# citizens only" carries no EEO marker, so it is kept).
+_EEO_MARKER_RE = re.compile(
+    r"without regard to|protected by law|equal opportunity|equal employment|"
+    r"regardless of (?:race|sex|gender|age)|national origin", re.I)
+_STRONG_VISA_RE = re.compile(
+    r"sponsor|visa|h-?1b|green[- ]card|work authoriz|permanent resident|"
+    r"cap[- ]exempt|perm process", re.I)
+
+# A "Location(s)" / "Available Locations" section heading — ATS pages (Greenhouse,
+# Ashby) list the true location as a bullet block UNDER such a heading, with NO
+# colon, so location.extract_jd_locations (colon-anchored) never sees it. Matching
+# the heading lets the digest pull the location bullets that follow. The word
+# boundary keeps "Relocation" from matching.
+_LOC_HEADING_RE = re.compile(
+    r"^\s*#{0,6}\s*\**\s*(?:available\s+|primary\s+|work\s+|office\s+)?locations?\b",
+    re.I,
+)
+# Common ATS nav chrome the reader leaves above the real <h1> title; skipped so the
+# digest titles the posting, not a breadcrumb.
+_NAV_CHROME = frozenset({
+    "back to jobs", "back", "apply", "apply now", "apply for this job",
+    "share", "share this job", "view all jobs", "all jobs", "see all jobs",
+    "menu", "home", "careers", "job details",
+})
+
 
 def _load_digest_helpers():
     """Lazily import the vendored gate classifiers the digest reuses.
@@ -248,13 +277,32 @@ def _load_digest_helpers():
     from location import (  # noqa: E402  (vendored location policy helpers)
         extract_jd_locations,
         _JD_LOC_RE,
+        _FOREIGN_TOKENS,
+        FOREIGN_REGIONS,
+        _FOREIGN_ABBR_RE,
     )
+    # Foreign is the decisive NO-MATCH location signal and is often stated only in
+    # prose / a title / an "Available Locations" bullet, so reuse location.py's OWN
+    # foreign place names — but match them on WORD BOUNDARIES here. location.py
+    # substring-matches these against short location strings; over full JD prose a
+    # substring match false-fires ("apac" in "capacity", "india" in "Indiana",
+    # "paris" in "comparison"), so the digest anchors them as whole words. Short/
+    # punctuated abbreviations (uk / eu) stay with location's own _FOREIGN_ABBR_RE.
+    foreign_words = sorted(
+        {t.strip() for t in (_FOREIGN_TOKENS + FOREIGN_REGIONS)
+         if re.fullmatch(r"[a-z][a-z ]{2,}", t.strip())},
+        key=len, reverse=True,
+    )
+    foreign_re = re.compile(
+        r"\b(" + "|".join(re.escape(w) for w in foreign_words) + r")\b", re.I)
     return {
         "classify_level": classify_level,
         "sponsor_phrases": tuple(_SPONSOR_NEGATIVE) + tuple(_SPONSOR_POSITIVE),
         "unescape": _source_text,
         "extract_jd_locations": extract_jd_locations,
         "jd_loc_re": _JD_LOC_RE,
+        "foreign_re": foreign_re,
+        "foreign_abbr_re": _FOREIGN_ABBR_RE,
     }
 
 
@@ -264,31 +312,75 @@ def _clip(text: str, width: int) -> str:
 
 
 def _digest_title(lines: list[str]) -> str:
-    """First non-empty line, with a leading markdown heading marker stripped."""
+    """The posting title: the first H1, else the first non-chrome non-empty line.
+
+    Scraped ATS pages frequently lead with nav chrome ("Back to jobs", "Apply")
+    before the real ``# <title>`` H1, so an H1 (when present) is the reliable title;
+    the fallback skips known chrome lines so a breadcrumb is never titled.
+    """
+    for line in lines:
+        heading = re.match(r"^#\s+(.*\S)\s*$", line)   # H1 only ('# ', not '## ')
+        if heading:
+            return heading.group(1).strip()
     for line in lines:
         stripped = line.strip()
         if not stripped:
             continue
-        heading = re.match(r"^#{1,6}\s+(.*)$", stripped)
-        return (heading.group(1).strip() if heading else stripped)
+        marked = re.match(r"^#{1,6}\s+(.*)$", stripped)
+        text = (marked.group(1).strip() if marked else stripped)
+        if text.lower() not in _NAV_CHROME:
+            return text
     return ""
+
+
+def _location_heading_block(lines: list[str], start: int) -> list[int]:
+    """Indices of a ``Location(s)`` heading plus the location lines beneath it.
+
+    Walks forward from the heading, skipping a single blank gap, collecting the
+    bullet/short lines that name the location(s), and stopping at the next heading
+    or the blank line that follows the block. Bounded so a mislabeled heading cannot
+    drag in the whole body.
+    """
+    picked = [start]
+    seen_content = False
+    for j in range(start + 1, min(len(lines), start + 8)):
+        stripped = lines[j].strip()
+        if not stripped:
+            if seen_content:
+                break
+            continue
+        if re.match(r"^#{1,6}\s+", stripped):
+            break
+        picked.append(j)
+        seen_content = True
+    return picked
 
 
 def _workplace_signal_lines(lines, helpers) -> tuple[list[str], bool]:
     """Every workplace/location signal line (±1 line of context), deduped.
 
-    Interesting lines = ``Location:`` label lines (via location's own ``_JD_LOC_RE``)
-    plus lines matching a workplace keyword; each is shown with ±1 line of context
-    and marked ``>``. Blank context lines are dropped; a gap between blocks prints a
-    ``…`` separator. Returns (rendered_lines, truncated).
+    Interesting lines are the union of: ``Location:`` label lines (location's own
+    ``_JD_LOC_RE``); lines matching a workplace keyword; a ``Location(s)`` /
+    ``Available Locations`` heading and the location bullets beneath it (the ATS
+    pattern colon-anchored parsing misses); and lines naming a FOREIGN place (reused
+    from location.py — the decisive no-match signal, often prose/title/bullet only).
+    Each is shown with ±1 line of context and marked ``>``; blank context lines are
+    dropped and a gap between blocks prints a ``…`` separator. Returns
+    (rendered_lines, truncated).
     """
     jd_loc_re = helpers["jd_loc_re"]
     unescape = helpers["unescape"]
+    foreign_re = helpers["foreign_re"]
+    foreign_abbr_re = helpers["foreign_abbr_re"]
     match_idxs = {i for i, ln in enumerate(lines) if jd_loc_re.match(ln)}
     for i, ln in enumerate(lines):
         norm = re.sub(r"\s+", " ", unescape(ln)).lower()
-        if _WORKPLACE_KW_RE.search(norm):
+        if (_WORKPLACE_KW_RE.search(norm)
+                or foreign_abbr_re.search(norm)
+                or foreign_re.search(norm)):
             match_idxs.add(i)
+        if _LOC_HEADING_RE.match(ln):
+            match_idxs.update(_location_heading_block(lines, i))
     context: set[int] = set()
     for i in match_idxs:
         for j in (i - 1, i, i + 1):
@@ -338,6 +430,12 @@ def _visa_sentences(lines, helpers) -> tuple[list[str], bool]:
             clean = sentence.strip().lstrip("#-*•> ").strip()
             norm = re.sub(r"\s+", " ", clean).strip().lower()
             if not norm or not _is_signal(norm) or norm in seen:
+                continue
+            # Drop equal-opportunity boilerplate: "citizenship" as a protected class,
+            # not a sponsorship requirement (kept only if a real sponsorship term is
+            # also present, which EEO text never carries).
+            if _EEO_MARKER_RE.search(norm) and not _STRONG_VISA_RE.search(norm):
+                seen.add(norm)
                 continue
             if len(found) >= _DIGEST_MAX_VISA_SENTENCES:
                 truncated = True
