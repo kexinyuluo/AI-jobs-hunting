@@ -158,6 +158,11 @@ Each expands in the annex; the bolded name is the canonical section.
   `tmp/web_artifacts/`, `tmp/scratch/`) — never the repo root or a tracked/product folder. Annex §9.
 - **Subagent Budget** — a request that fans out launches **at most 8 subagents total** across all
   waves; reuse/resume or finish in the parent — never a ninth. Repo-wide cap. Annex §10.
+- **Shell & Paths** — the shell is **zsh**; always use **absolute paths** in bash calls (a subagent's
+  working directory resets between calls, so relative paths break), and **quote** any `=`-leading
+  argument or glob (`'--flag=val'`, `'*.md'`) so zsh does not mis-split or expand it.
+- **Read Hygiene** — never re-Read a file already in context (duplicate reads are pure token waste);
+  for a file over ~800 lines, prefer a `grep` or an offset/limit slice over reading the whole file.
 
 ## Application Folder Convention
 
