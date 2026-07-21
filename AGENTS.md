@@ -158,6 +158,10 @@ Each expands in the annex; the bolded name is the canonical section.
   `tmp/web_artifacts/`, `tmp/scratch/`) — never the repo root or a tracked/product folder. Annex §9.
 - **Subagent Budget** — a request that fans out launches **at most 8 subagents total** across all
   waves; reuse/resume or finish in the parent — never a ninth. Repo-wide cap. Annex §10.
+- **Process Folders** — `tasks/`, `known-issues/`, `design-decisions/`, `unresolved-decisions/`
+  (+ same-name `private/` mirrors for leak-guarded content): one self-contained file per item,
+  formats in each folder's README. Hit an owner-owned fork? File it in `unresolved-decisions/`
+  (with options + a default path) and continue — don't block, don't guess.
 - **Shell & Paths** — the shell is **zsh**; always use **absolute paths** in bash calls (a subagent's
   working directory resets between calls, so relative paths break), and **quote** any `=`-leading
   argument or glob (`'--flag=val'`, `'*.md'`) so zsh does not mis-split or expand it.
