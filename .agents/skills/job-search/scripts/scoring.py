@@ -288,6 +288,13 @@ def score_posting(posting: JobPosting, profile: dict,
     strong = [k for k in (kw.get("strong") or []) if term_matches(k, ntitle + " " + ndesc)]
     good = [k for k in (kw.get("good") or []) if term_matches(k, ndesc)]
     neg = [k for k in (kw.get("negative") or []) if term_matches(k, ntitle + " " + ndesc)]
+    # `negative_neutralize`: a whitelisted domain (e.g. robotics) exempts a posting
+    # from the negative penalty — mirrors titles.exclude_neutralize. Use when a
+    # broad mis-fit signal (pure-C++/embedded) should NOT fire in a domain the
+    # candidate actually wants.
+    if neg and any(term_matches(n, ntitle + " " + ndesc)
+                   for n in (kw.get("negative_neutralize") or [])):
+        neg = []
 
     for k in strong:
         bump = 8 if term_matches(k, ntitle) else 4
