@@ -349,16 +349,6 @@ def render_from_reference(ref_path: Path, data: dict, output_path: Path):
 
 
 # ──────────────────────────────────────────────
-# PDF conversion
-# ──────────────────────────────────────────────
-
-def convert_to_pdf(docx_path: Path, output_dir: Path, stem: str) -> Path | None:
-    """Convert the rendered resume DOCX to PDF (shared LibreOffice helper)."""
-    from pdf_convert import docx_to_pdf
-    return docx_to_pdf(docx_path, output_dir, stem)
-
-
-# ──────────────────────────────────────────────
 # CLI
 # ──────────────────────────────────────────────
 
@@ -382,6 +372,10 @@ def main():
                              "divergent resumes; leave unset for the standard single resume.")
     parser.add_argument("--skip-checks", action="store_true",
                         help="Skip post-render validation (.agents/skills/resume-writer/scripts/check.py)")
+    parser.add_argument("--skip-estimate", action="store_true",
+                        help="Skip the pre-flight one-page layout estimate gate that "
+                             "aborts before conversion on a clear overflow "
+                             "(check.py still runs as the authoritative page-count gate)")
     args = parser.parse_args()
 
     input_path = Path(args.yaml_path)
@@ -431,20 +425,47 @@ def main():
         print(f"Error: reference {ref_path} not found", file=sys.stderr)
         sys.exit(1)
 
-    # Pre-render one-page estimate (fast, no LibreOffice) so an overflow is
-    # visible before the expensive render. Advisory only — check.py remains the
-    # authoritative post-render page-count gate.
+    # Pre-flight one-page estimate (fast, no LibreOffice). This is a GATE, not
+    # just advisory: a CLEAR overflow means the render would fail check.py's
+    # one-page gate anyway, so we abort BEFORE the expensive DOCX + LibreOffice
+    # cycle and print what to trim. We abort only on a clear excess — est over
+    # budget by MORE than one rendered line of word-wrap noise (~±12pt) — so a
+    # borderline/TIGHT resume still renders (the shipped example estimates a few
+    # pt over budget yet is a valid 1 page). At the abort threshold even a full
+    # line of favorable wrap still leaves the resume over budget, so the render
+    # would genuinely spill. check.py stays the authoritative post-render page
+    # gate; --skip-estimate bypasses this pre-flight entirely.
+    clear_overflow = False
     try:
         import estimate_layout
         _m = estimate_layout.read_template_metrics(ref_path)
         _p = estimate_layout.derived_params(_m)
         _e = estimate_layout.estimate(data, _p)
-        _status, _msg = estimate_layout.verdict(
+        est_status, est_msg = estimate_layout.verdict(
             _e["total_pt"], _e["budget_pt"], _p["pitch_body"])
         print(f"  Layout: est {_e['total_pt']:.0f}pt / {_e['budget_pt']:.0f}pt "
-              f"budget — {_status}: {_msg}")
+              f"budget — {est_status}: {est_msg}")
+        # One rendered line = body pitch + per-bullet space-after; the ±1-line
+        # word-wrap noise band. Clear overflow = over budget by more than that.
+        noise_line_pt = _p["pitch_body"] + estimate_layout.BULLET_AFTER_PT
+        clear_overflow = (_e["total_pt"] - _e["budget_pt"]) > noise_line_pt
     except Exception:
-        pass
+        clear_overflow = False  # estimator is best-effort; never block on its bug
+
+    if clear_overflow and not args.skip_estimate:
+        print("Aborting before render: the layout estimate predicts a 2-page "
+              "resume (clear one-page overflow) that would fail check.py's "
+              "one-page gate. Nothing was rendered or converted.", file=sys.stderr)
+        print("  Trim guidance (SKILL Step 6 — '2 pages'): shorten the longest "
+              "bullets / summary first (keep each bullet <= ~2 rendered lines). "
+              "Drop the single least JD-relevant project only as a last resort, "
+              "when shortening isn't enough — never drop a project just to "
+              "tailor, and never pad with filler/invented content.", file=sys.stderr)
+        print("  Re-run estimate_layout.py after trimming to confirm it lands "
+              "under budget, then re-render. Override with --skip-estimate to "
+              "render anyway (check.py stays the authoritative page gate).",
+              file=sys.stderr)
+        sys.exit(1)
 
     try:
         render_from_reference(ref_path, data, docx_output)
@@ -453,28 +474,48 @@ def main():
         sys.exit(1)
     print(f"  DOCX: {docx_output}")
 
+    # ── Cover-letter DOCX (one per JD/role, from the bundled ..._Application_<role>.txt) ──
+    # Build every cover-letter DOCX first (fast, in-process; no PDF yet) so the
+    # resume PDF and all cover-letter PDFs convert together in ONE parallel batch
+    # below, instead of one-LibreOffice-at-a-time.
+    cover_docs = []  # (role, cl_docx | None) in render order
+    if not args.no_cover_letter:
+        import cover_letter
+        for role, cl_docx, _ in cover_letter.render_all_cover_letters(
+                app_dir, make_pdf=False):
+            tag = f" [{role}]" if role else ""
+            if cl_docx is None:
+                print(f"  Cover{tag}: no bundled Application .txt for this role")
+            else:
+                print(f"  Cover DOCX{tag}: {cl_docx}")
+            cover_docs.append((role, cl_docx))
+
     pdf_path = None
     if not args.no_pdf:
-        pdf_path = convert_to_pdf(docx_output, app_dir, stem)
+        # Convert the resume + every cover letter concurrently — each in its own
+        # LibreOffice process with an isolated user profile (pdf_convert). The
+        # resume is always job 0; cover PDFs follow in cover_docs order.
+        import pdf_convert
+        renderable = [(role, cl) for role, cl in cover_docs if cl is not None]
+        jobs = [(docx_output, app_dir, stem)]
+        jobs += [(cl, app_dir, cl.stem) for _, cl in renderable]
+        try:
+            pdfs = pdf_convert.docx_to_pdf_many(jobs)
+        except pdf_convert.PdfConversionError as exc:
+            print(f"Error: PDF conversion failed: {exc}", file=sys.stderr)
+            sys.exit(1)
+
+        pdf_path = pdfs[0]
         if pdf_path:
             print(f"  PDF:  {pdf_path}")
         else:
             print("  PDF:  skipped (install LibreOffice or docx2pdf)")
             print("        Open the DOCX in Word/Google Docs and export as PDF.")
-
-    # ── Cover letters (one per JD/role, from the bundled ..._Application_<role>.txt) ──
-    if not args.no_cover_letter:
-        import cover_letter
-        for role, cl_docx, cl_pdf in cover_letter.render_all_cover_letters(
-                app_dir, make_pdf=not args.no_pdf):
+        for (role, _cl), cl_pdf in zip(renderable, pdfs[1:]):
             tag = f" [{role}]" if role else ""
-            if cl_docx is None:
-                print(f"  Cover{tag}: no bundled Application .txt for this role")
-                continue
-            print(f"  Cover DOCX{tag}: {cl_docx}")
             if cl_pdf:
                 print(f"  Cover PDF{tag}:  {cl_pdf}")
-            elif not args.no_pdf:
+            else:
                 print(f"  Cover PDF{tag}:  skipped (install LibreOffice or docx2pdf)")
 
     if not args.skip_checks:
