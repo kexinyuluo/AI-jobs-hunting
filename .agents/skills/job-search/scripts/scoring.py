@@ -162,6 +162,28 @@ def experience_ok(posting: JobPosting, profile: dict) -> bool:
     return stated_min <= int(cap)
 
 
+def comp_ok(posting: JobPosting, profile: dict) -> bool:
+    """Drop postings whose stated salary is clearly annual and below the floor.
+
+    Fires only when ``profile["comp"]["min_base"]`` is set AND the posting states a
+    salary whose upper bound reads as an annual USD figure below the floor. A range
+    that reaches the floor at its top is kept (it *can* pay enough). No stated salary,
+    small numbers (< 15k — per-hour/per-month or a parse artifact, not a plausible
+    annual salary), and unparseable values are all kept: the floor never guesses.
+    """
+    floor = (profile.get("comp") or {}).get("min_base")
+    if not floor:
+        return True
+    s = posting.salary_range
+    if not isinstance(s, dict):
+        return True
+    hi, lo = s.get("max"), s.get("min")
+    top = hi if isinstance(hi, (int, float)) else lo
+    if not isinstance(top, (int, float)) or top < 15000:
+        return True
+    return top >= float(floor)
+
+
 # --------------------------------------------------------------------------- #
 # AI-native / AI-transitioning company signal
 # --------------------------------------------------------------------------- #

@@ -69,8 +69,8 @@ from common import days_since  # noqa: E402
 from job_metadata import analyze_job_metadata, load_company_levels  # noqa: E402
 from registry import Registry, load_registry  # noqa: E402
 from scoring import (  # noqa: E402
-    ai_company_ok, date_ok, experience_ok, location_ok, score_posting, title_ok,
-    visa_ok,
+    ai_company_ok, comp_ok, date_ok, experience_ok, location_ok, score_posting,
+    title_ok, visa_ok,
 )
 from sources import fetch_company  # noqa: E402
 import snapshot  # noqa: E402  (sibling: pre-filter fetch cache + --refilter helpers)
@@ -632,6 +632,8 @@ def filter_score_rank(postings, profile, ctx, *, max_age, top_k, max_per_company
         if not visa_ok(p, profile):
             continue
         if not experience_ok(p, profile):
+            continue
+        if not comp_ok(p, profile):
             continue
         is_ai_native = bool(ai_native_keys
                             and registry.match_keys(p.company) & ai_native_keys)
