@@ -465,7 +465,18 @@ def render_markdown(kept, profile, meta) -> str:
     ]
     for i, p in enumerate(kept, 1):
         age = "?" if p.age_days is None else f"{p.age_days:.1f}d"
-        loc = (_display_loc(p.location, preferred).replace("|", "/")[:30] or p.remote)
+        # Surface the remote/hybrid flag when the location text (often hub cities like
+        # "SF • NY • United States") doesn't itself say so — the flag drives scoring but
+        # was otherwise invisible in this column.
+        loc_txt = _display_loc(p.location, preferred).replace("|", "/")
+        low = loc_txt.lower()
+        if p.remote == "remote" and "remote" not in low:
+            loc_txt = (loc_txt[:22] + " (remote)") if loc_txt else "remote"
+        elif p.remote == "hybrid" and "hybrid" not in low:
+            loc_txt = (loc_txt[:22] + " (hybrid)") if loc_txt else "hybrid"
+        else:
+            loc_txt = loc_txt[:30]
+        loc = loc_txt or p.remote
         why = "; ".join(p.reasons)[:100].replace("|", "/")
         title = p.title.replace("|", "/")[:46]
         lines.append(
@@ -555,6 +566,46 @@ def build_filter_context(profile: dict, registry: Registry, args) -> dict:
     }
 
 
+# --- Remote-from-JD enrichment ------------------------------------------------
+# The per-source remote flag only inspects the location string (+ a ~400-char JD
+# prefix), so a posting whose remote eligibility is stated deeper in the JD body —
+# e.g. Figma's "can be held from one of our US hubs or remotely in the United
+# States" at char ~1900 — gets mislabeled `unknown` and loses the remote scoring
+# boost. This pass scans the FULL description for explicit US-remote phrasing and
+# upgrades `unknown` -> `remote` only (never downgrades, never overrides a source
+# that already classified the posting), skipping a match preceded by a negation.
+_JD_REMOTE_RE = re.compile(
+    r"remotely in the (?:united states|us|u\.s\.?)"
+    r"|remote(?:ly)? (?:with)?in the (?:united states|us|u\.s\.?)"
+    r"|\bfully[- ]remote\b"
+    r"|\bus[- ]remote\b|\bremote[- ]us\b"
+    r"|\bremote \((?:us|usa|united states|u\.s\.?)\)"
+    r"|work from anywhere in the (?:us|united states)",
+    re.I,
+)
+_JD_REMOTE_NEG_RE = re.compile(
+    r"\b(?:not|no|non|isn'?t|aren'?t|cannot|can'?t|won'?t|without)\b", re.I)
+
+
+def _enrich_remote_from_jd(postings):
+    """Upgrade remote='unknown' -> 'remote' when the JD body states US-remote.
+
+    Fires only on 'unknown' (an authoritative source flag is never overridden) and
+    skips a phrase negated within the preceding ~24 chars ("not fully remote").
+    Mutates and returns the same list.
+    """
+    for p in postings:
+        if getattr(p, "remote", "unknown") != "unknown":
+            continue
+        desc = getattr(p, "description", "") or ""
+        for m in _JD_REMOTE_RE.finditer(desc):
+            if _JD_REMOTE_NEG_RE.search(desc[max(0, m.start() - 24):m.start()]):
+                continue
+            p.remote = "remote"
+            break
+    return postings
+
+
 def filter_score_rank(postings, profile, ctx, *, max_age, top_k, max_per_company,
                       sponsor_index, company_levels, registry, now):
     """Run filter -> score -> dedupe -> rank on already-fetched postings.
@@ -566,6 +617,7 @@ def filter_score_rank(postings, profile, ctx, *, max_age, top_k, max_per_company
     which is what makes refilter byte-identical to the fetch run that wrote the cache.
     """
     as_of = now.date()
+    _enrich_remote_from_jd(postings)   # upgrade unknown->remote from JD body before scoring
     kept = []
     n_blacklisted = n_considered = n_recently_searched = n_non_ai = 0
     ai_native_keys = ctx["ai_native_keys"]
@@ -691,6 +743,10 @@ def main() -> int:
                          "default 3). 0 disables the cap.")
     ap.add_argument("--visa-policy", choices=["exclude_negative", "require_positive"],
                     default=None)
+    ap.add_argument("--quiet", "-q", action="store_true",
+                    help="Token-lean output: skip printing the full ranked markdown "
+                         "table to stdout; print only a per-row one-line summary. "
+                         "The full table is still written to the discoveries file.")
     ap.add_argument("--ai-native-only", action="store_true",
                     help="Hard-filter to AI-native / AI-transitioning employers "
                          "(registry ai-native tag OR an AI-company signal in the JD). "
@@ -941,9 +997,16 @@ def main() -> int:
 
     # Default stdout is the compact contract (5-line summary + top-K table); the full
     # Markdown report always lands in the discoveries file, and --print-full restores
-    # the old full-report stdout dump.
+    # the old full-report stdout dump. --quiet is the leanest: one line per match.
     if args.print_full:
         print(md)
+    elif args.quiet:
+        # Token-lean summary: one short line per match instead of the full table.
+        for p in kept:
+            d = p.to_dict() if hasattr(p, "to_dict") else {}
+            print(f"- {d.get('company', '?')} | {d.get('title', '?')} | "
+                  f"score {d.get('score', '?')} | {d.get('url', '')}")
+        print(f"(full ranked table: {out_path})")
     else:
         print(render_run_summary(meta, kept, snapshot_display=snapshot_display,
                                  discoveries_path=out_path, json_path=args.json_out))
