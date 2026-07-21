@@ -71,26 +71,36 @@ with the repository. Treat this as a separate local workflow from drafting:
 1. Run `review-window --limit 50`, then widen the read-only scan with `inbox --limit 500` when the
    user asks for a mailbox-wide status review. Expand up to `--limit 2000` only when a named older
    thread or outcome is still missing.
-2. Consider only explicit hiring signals: an application receipt can move `drafted` to `applied`;
-   an interview/screen request or confirmed next round can move an application to `in_progress`;
-   and an explicit rejection or closed role can move it to `rejected`.
+2. Consider only explicit hiring signals, and classify each by **scope**. *Per-role evidence* — an
+   interview/screen request, a confirmed next round, or a rejection naming one specific posting in a
+   multi-role app — transitions just that posting. *Whole-application evidence* — an application
+   receipt covering the app, or a rejection that closes every tracked role — transitions the whole
+   application. A receipt moves `drafted` to `applied`; an interview/screen or confirmed next round
+   moves to `in_progress`; an explicit rejection or closed role moves to `rejected`.
 3. Read the exact message and run `match-application` using company, exact role or job ID, subject,
-   and sender. Require one unambiguous match. A company name alone, a low score, a job alert, or a
-   stale outcome for another role is not enough.
-4. For a multi-role application, do not move the whole folder to `rejected` unless the evidence
-   closes every tracked role. Record a concise dated outcome in `notes.md` and leave the folder in
-   place when only one role was rejected. Any confirmed active interview may move the shared folder
-   to `in_progress`.
-5. Make a confirmed transition only through the application-tracker command:
+   and sender. Require one unambiguous match — down to the exact posting when the evidence is
+   per-role. A company name alone, a low score, a job alert, or a stale outcome for another role is
+   not enough.
+4. For a multi-role application, land a per-role outcome as **that posting's** `status` (via
+   `--update-job` in the next step); the folder then follows the rollup automatically — one rejected
+   role no longer forces the whole folder, and any confirmed active interview rolls the folder up to
+   `in_progress`. Also record a concise dated outcome for the role in the application's `notes.md`
+   (the narrative log); the status itself now lives in `meta.yaml`, not in `notes.md`.
+5. Make a confirmed transition only through the application-tracker command, matched to the evidence
+   scope:
 
    ```bash
+   # per-role evidence -> one posting (add --stage when the message names screen/onsite/offer)
+   .venv/bin/python .agents/skills/application-tracker/scripts/status.py \
+     --update-job <slug> "<role-match>" <applied|in_progress|rejected>
+   # whole-application evidence (receipt, or rejection closing every role) -> all postings + folder
    .venv/bin/python .agents/skills/application-tracker/scripts/status.py \
      --update <slug> <applied|in_progress|rejected>
    ```
 
 6. After all moves, run `status.py --sync-log`. Report every local change with application slug,
-   previous status, new status, and the message evidence. Also report ambiguous or already-current
-   matches that were intentionally left unchanged.
+   the affected role (for per-role updates), previous status, new status, and the message evidence.
+   Also report ambiguous or already-current matches that were intentionally left unchanged.
 
 Never copy full mailbox bodies into application files. Save only the minimum outcome note needed
 for pipeline traceability, and keep personal mailbox details out of the public repository.

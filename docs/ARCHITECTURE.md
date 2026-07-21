@@ -59,7 +59,7 @@ What the config supplies:
 | `outlook_email.*` | Private personal-mailbox address, Microsoft public-client application ID, and `consumers` tenant selection; OAuth refresh state lives only in the OS keyring |
 | `location_policy` | Allowed metros + US-remote/us-only rules that gate application creation |
 
-## Application folders: the folder is the status
+## Application folders: per-job status, folder = derived rollup
 
 Every application is a folder `<company>-<role>-<YYYYMMDD>/` inside a numbered status
 folder under the applications root:
@@ -75,17 +75,20 @@ applications/
 └── 6_drafted/        # generated applications land here for your review
 ```
 
-The numeric prefixes make a plain directory listing sort into pipeline order. There is
-no `status` field anywhere — **moving the folder is the status change**, done by you
-(or `status.py --update <slug> <status>` on your behalf).
+The numeric prefixes make a plain directory listing sort into pipeline order. Each `jobs:`
+entry in `meta.yaml` carries its own `status`; the folder is the **derived overall status** —
+the per-job statuses rolled up by precedence (`in_progress > applied > drafted > rejected >
+ignored`), and the two must agree. `status.py --update <slug> <status>` (whole application) and
+`--update-job <slug> <role-match> <status>` (one posting) write the per-job field(s) and move the
+folder to match; moving a folder by hand needs a re-sync via `--update`.
 
 Inside each application folder, deliverables sit at the root (final resume PDF, one
 cover-letter PDF and one bundled copy-paste `..._Application_<role>.txt` per posting,
 `meta.yaml`) and generation inputs live in `source/` (JD files, `tailored.yaml`,
 DOCX files). `AGENTS.md` → "Application Folder Convention" is the canonical spec.
 
-`meta.yaml` carries per-posting facts (level, required YOE, salary, workplace,
-sponsorship) under a `jobs:` list — schema v3, the only supported application schema.
+`meta.yaml` carries per-posting facts (a required `status`, level, required YOE, salary,
+workplace, sponsorship) under a `jobs:` list — schema v4, the only supported application schema.
 The `application-tracker` skill owns the schema; its scripts insert and validate the
 facts with a formatting-preserving, checksum-guarded editor.
 

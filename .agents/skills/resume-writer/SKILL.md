@@ -114,11 +114,11 @@ metadata gaps, run `status.py --enrich-metadata <folder>` first).
 Otherwise generate a slug `<company>-<role>-<YYYYMMDD>` (lowercase, hyphens, no special chars),
 confirm it is unused under every status folder, and create the folder + its `source/` subfolder.
 Save the full JD text as `source/JD-<job title>.md` (one file per posting; never a bare `jd.md` —
-`check.py` concatenates every `JD-*.md`), and write a schema-v3 `meta.yaml` with a uniform
-`jobs:` list (one entry per posting). Newly generated applications always go under
-`applications/6_drafted/`; the folder is the status, so never add a `status` field. `render.py`
-emits every output filename automatically from the configured stems — never hand-name or
-hand-place files. **Full folder-creation detail (the `meta.yaml` skeleton + field rules, JD/output
+`check.py` concatenates every `JD-*.md`), and write a schema-v4 `meta.yaml` with a uniform
+`jobs:` list (one entry per posting), **every entry created with `status: "drafted"`**. Newly
+generated applications always go under `applications/6_drafted/`, whose rollup for an all-drafted
+app is `drafted`. `render.py` emits every output filename automatically from the configured stems —
+never hand-name or hand-place files. **Full folder-creation detail (the `meta.yaml` skeleton + field rules, JD/output
 naming conventions, the `status.py --enrich-metadata` handoff, and the application-tracker schema
 owner): [`reference.md`](reference.md) § "Application folder creation (Step 1 detail)".**
 
@@ -267,7 +267,7 @@ pre-check**. A verdict missing part (2) is incomplete.
 
 ### Step 6: Render + Validate
 
-Ensure `meta.yaml` is schema v3 with complete structured metadata for every posting record before
+Ensure `meta.yaml` is schema v4 with complete structured metadata for every posting record before
 rendering (`status.py --check-metadata`; fill gaps with `status.py --enrich-metadata <folder>`).
 Then render — this writes the resume DOCX to `source/`, the PDF to root, and (for each
 `meta.yaml` role whose bundle exists) the cover letter DOCX/PDF, and runs check.py automatically:
@@ -291,7 +291,7 @@ the fix lands under budget). Expect 1–2 cycles; **after 3, stop and report to 
 Checks can also be run standalone:
 `.venv/bin/python .agents/skills/resume-writer/scripts/check.py applications/6_drafted/<slug>/`.
 Submit the resume DOCX from `source/` to portals (PDFs are for humans). **Render internals
-(employer-header alignment, the schema-v3 `meta.yaml` gate, cover-letter render flags,
+(employer-header alignment, the schema-v4 `meta.yaml` gate, cover-letter render flags,
 master-resume updates, and the log-update commands): [`reference.md`](reference.md) § "Render &
 validate — operational detail" and LESSONS.md → "Rendering / layout".**
 

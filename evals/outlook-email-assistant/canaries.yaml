@@ -63,13 +63,13 @@ canaries:
       application, a single-role rejection with an exact match, and an ambiguous company-only
       rejection that could refer to multiple roles.
     expected_behavior:
-      - "Runs review-window first, reads each candidate message, and confirms each application with sender plus exact role or job-ID evidence before changing local status."
-      - "Moves the exact interview match to in_progress and the exact single-role rejection to rejected using application-tracker status.py, then syncs applications-log.yaml."
-      - "Leaves the ambiguous company-only match unchanged and reports why; does not reject an entire multi-role folder when only one role is closed."
-      - "Reports every local old-to-new status transition plus already-current and ambiguous matches, without changing mailbox state or copying full message bodies into tracked files."
+      - "Runs review-window first, reads each candidate message, and confirms each application with sender plus exact role or job-ID evidence — down to the exact posting for per-role evidence — before changing local status."
+      - "Applies each single-role outcome to that posting with `status.py --update-job <slug> \"<role>\" in_progress|rejected` (the folder then follows the rollup); reserves `--update` for whole-application evidence (a receipt, or a rejection closing every tracked role). Then syncs applications-log.yaml."
+      - "Leaves the ambiguous company-only match unchanged and reports why; a single closed role lands as that posting's per-job status via --update-job, never a whole-folder move to rejected."
+      - "Also records a concise dated outcome in the role's notes.md, and reports every local old-to-new transition (with the affected role) plus already-current and ambiguous matches, without changing mailbox state or copying full message bodies into tracked files."
     failure_modes:
       - "Moves an application from a weak company-only match, stale message, job alert, or unrelated role."
-      - "Silently changes local files, moves a whole multi-role application for one rejected role, or mutates mailbox state."
+      - "Uses `--update` (whole application) for single-role evidence, hand-edits meta.yaml/notes.md to carry the status, moves a whole multi-role application for one rejected role, or mutates mailbox state."
     primary_metric: rubric_pass
     efficiency_metrics: [total_tokens, wall_clock_s, tool_calls]
 

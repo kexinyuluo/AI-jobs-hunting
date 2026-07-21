@@ -97,8 +97,8 @@ by default, real data under `private/applications/`); only shared tooling (`scri
 `.agents/skills/`) sits at the repo root. Files are grouped by purpose into
 meaningful subfolders (see §8 File & Folder Organization): `scripts/` fans out into
 `scripts/shared/`, `scripts/vendoring/`, and `scripts/maintenance/` (each skill bundles its
-own render/tracking scripts under `.agents/skills/<skill>/scripts/`). Application status is encoded by which sub-folder the application sits in
-(the folder is the source of truth for status); the profile-support directory
+own render/tracking scripts under `.agents/skills/<skill>/scripts/`). Application status is encoded per posting in each `jobs:` entry's `status`,
+and the sub-folder the application sits in is the derived overall status (rollup); the profile-support directory
 (`<profile-dir>` = `config.applications_root()/0_profile/` — where the skip-logs and the
 tailoring card ALWAYS live, regardless of where `config.profile_md_path()` points; in the
 shipped example the profile file lives under `examples/profile/`, but this logs dir is
@@ -126,14 +126,14 @@ applications.
 | `.agents/skills/resume-writer/scripts/cover_letter.py` | Render one cover letter per JD from each bundled `..._Application_<job title>.txt` COVER LETTER section (DOCX in `source/` + PDF at root); `--label "<Role>"` renders just one. Detail in the resume-writer skill |
 | `.agents/skills/resume-writer/scripts/pdf_convert.py` | Shared DOCX → PDF conversion (LibreOffice, docx2pdf fallback) used by both renderers |
 | `.agents/skills/resume-writer/scripts/extract.py` | DOCX → YAML extraction utility (re-run when the master resume changes) |
-| `.agents/skills/application-tracker/scripts/status.py` | Scan applications and manage status-folder metadata; `--enrich-metadata` safely inserts missing schema-v3 level/YOE/salary facts with the formatting-preserving editor, `--check-metadata` validates them (drafted by default), `--sync-log` refreshes logs, and `--check-locations` enforces location policy |
+| `.agents/skills/application-tracker/scripts/status.py` | Scan applications and manage status-folder metadata; `--enrich-metadata` safely inserts missing schema-v4 level/YOE/salary facts with the formatting-preserving editor, `--check-metadata` validates them (all status folders by default), `--update`/`--update-job` transition per-job status + move the folder, `--sync-log` refreshes logs, and `--check-locations` enforces location policy |
 | `.agents/skills/application-tracker/scripts/backfill_job_metadata.py` | Dry-run-by-default fleet metadata preview/backfill; requires exact `jd_file` associations for multi-role records and uses checksum-guarded atomic writes only with `--write` |
 | `.agents/skills/resume-writer/scripts/check.py` | Validate tailored.yaml + PDF (locked fields, real project titles/skills, bullet lengths, one page, each JD's cover letter); re-exports the filename stems + `application_roles()`/layout helpers. Detail in the resume-writer skill |
 | `scripts/shared/config.py` | **Canonical** config loader — candidate identity, paths (including the company-level cache), output-filename stems, and location policy. Vendored into `job-search`, `resume-writer`, and `application-tracker` |
 | `scripts/shared/layout.py` | **Canonical** pure application-folder layout helpers (no identity/config): `source/` rules, `slugify_label` / `compose_stem`, `application_roles()`, and `find_jd_files`. Vendored into `resume-writer` and `application-tracker` |
 | `scripts/shared/location.py` | **Canonical** shared location classifier — turns a posting `location` string into a match (e.g. `metro` / `us_remote`) or no-match (`other_us` / `foreign` / `unknown`) per the configured location policy (ships with NO built-in metros; callers inject `config.location_policy()`); also extracts `Location:` lines from JD files. Vendored into `job-search`, `resume-writer`, and `application-tracker` (see §7 Sharing Code Across Skills) |
-| `scripts/shared/job_metadata.py` | **Canonical** pure extractor/validator for the flat schema-v3 per-posting job level (normalized word + approximate Google-equivalent range), required YOE, salary, `workplace` (onsite/hybrid/remote), and heuristic `sponsorship` (likely/unlikely/unknown), plus loading of the optional sourced company-levels reference cache. Vendored into all three job workflow skills |
-| `scripts/shared/metadata_editor.py` | **Canonical** formatting-preserving schema-v3 `meta.yaml` editor (YAML node anchors, checksums, atomic writes, semantic verification, idempotence). Vendored into application-tracker |
+| `scripts/shared/job_metadata.py` | **Canonical** pure extractor/validator for the flat schema-v4 per-posting `status`, job level (normalized word + approximate Google-equivalent range), required YOE, salary, `workplace` (onsite/hybrid/remote), and heuristic `sponsorship` (likely/unlikely/unknown), plus the `derive_status` folder rollup and loading of the optional sourced company-levels reference cache. Vendored into all three job workflow skills |
+| `scripts/shared/metadata_editor.py` | **Canonical** formatting-preserving schema-v4 `meta.yaml` editor (YAML node anchors, checksums, atomic writes, semantic verification, idempotence). Vendored into application-tracker |
 | `scripts/maintenance/import_company_levels.py` | Dry-run-by-default YAML/JSON/CSV importer for user-supplied or licensed company-level facts; never fetches/scrapes Levels.fyi and keeps base/stock/bonus/total plus geographic bands distinct |
 | `scripts/vendoring/sync_vendored.py` | Vendoring tool: copies each canonical shared module into every consuming skill's `scripts/_vendor/` (registry in `TARGETS`); `--check` fails on drift (run by the pre-commit hook) |
 | `hooks/pre-commit` | Tracked git pre-commit hook: runs the vendored-copy drift check + `compileall`. Install once: `python scripts/bootstrap_overlay.py` (installs pre-commit AND pre-push) |
@@ -177,12 +177,12 @@ env var).
 # Show all applications and their status (status = which folder each app lives in)
 .venv/bin/python .agents/skills/application-tracker/scripts/status.py
 
-# Populate/validate schema-v3 level, required YOE, salary + approximate Google-equiv from JD + cache.
+# Populate/validate schema-v4 level, required YOE, salary + approximate Google-equiv from JD + cache.
 .venv/bin/python .agents/skills/application-tracker/scripts/status.py --enrich-metadata applications/6_drafted/<slug>/
-# Fleet preview: dry-run, defaults to applications/6_drafted/ (strict schema v3). Add --all-statuses for the
-# full fleet or --statuses <labels> for a set; add --write only after reviewing the dry-run preview.
+# Fleet preview: dry-run, covers ALL status folders (strict schema v4). Use --statuses <labels> to
+# narrow to a set; add --write only after reviewing the dry-run preview.
 .venv/bin/python .agents/skills/application-tracker/scripts/backfill_job_metadata.py
-# Validate structured metadata — DRAFTED-ONLY by default; --all-statuses for the fleet.
+# Validate structured metadata — ALL status folders by default; --statuses <labels> to narrow.
 .venv/bin/python .agents/skills/application-tracker/scripts/status.py --check-metadata
 
 # Import user-supplied/licensed company-level facts (YAML/JSON/CSV; dry-run by default)
@@ -196,9 +196,11 @@ env var).
 .venv/bin/python .agents/skills/application-tracker/scripts/status.py --log-search "Example Corp" --outcome no_suitable
 # Optional: --date YYYY-MM-DD
 
-# Move an application into a different status folder
+# Transition status (writes per-job status + moves the folder to match the rollup)
 # (statuses: drafted | applied | in_progress | rejected | ignored)
 .venv/bin/python .agents/skills/application-tracker/scripts/status.py --update <slug> applied
+# Transition ONE posting in a multi-role app (role-match = role substring or 1-based index)
+.venv/bin/python .agents/skills/application-tracker/scripts/status.py --update-job <slug> "<role-match>" in_progress --stage "onsite"
 
 # Personal Outlook (draft-only; user sends manually; see skill for login/inbox/draft commands)
 .venv/bin/python .agents/skills/outlook-email-assistant/scripts/outlook_email.py doctor
@@ -346,8 +348,9 @@ repo-wide cap — the skills reference it rather than restating it.
 The canonical file tree is in `AGENTS.md` → "Application Folder Convention". The full status
 model, per-file descriptions, `meta.yaml` fields, and the divergent-role split follow.
 
-Each application is a folder named `<company>-<role>-<YYYYMMDD>/`. **Status is the
-parent status folder**, and applications are always created under
+Each application is a folder named `<company>-<role>-<YYYYMMDD>/`. **Each `jobs:` entry carries a
+per-job `status`; the parent status folder is the derived overall status (rollup) and the two must
+agree.** Applications are always created under
 `applications/6_drafted/<company>-<role>-<YYYYMMDD>/`. The status folders and what they mean:
 
 | Folder | Status | Who moves it |
@@ -384,7 +387,7 @@ example config the resume stem is `Jordan_Rivers_Software_Engineer_Resume`:
 
 ```
 applications/6_drafted/<slug>/                     # e.g. a 2-role folder
-├── meta.yaml                                    # tracking metadata (status = the folder)
+├── meta.yaml                                    # tracking metadata (per-job status; folder = derived rollup)
 ├── <RESUME_STEM>.pdf                            # ONE final resume (for humans/email)
 ├── <COVER_STEM>_<Role_A>.pdf                    # one cover letter per JD
 ├── <COVER_STEM>_<Role_B>.pdf
@@ -405,15 +408,17 @@ The `<Role>` suffix is the role's slug (underscores, via `layout.slugify_label`,
 `cover_letter.py` emit these names automatically — never hand-name or hand-place them.
 
 Root files:
-- `meta.yaml` — human-readable tracking metadata. Top-level `job_metadata_schema_version: 3`
+- `meta.yaml` — human-readable tracking metadata. Top-level `job_metadata_schema_version: 4`
  plus company-scope fields and a uniform **`jobs:` list — one entry per posting, always a list
- even for a single role** (each entry carries `role`, its exact `jd_file`, `location`,
- `workplace`, `sponsorship`, and the flat `job_level`/`required_yoe`/`salary_range` facts; no
- `total_compensation_range`). **The `application-tracker` skill (`.agents/skills/application-tracker/SKILL.md`,
+ even for a single role** (each entry carries `role`, its exact `jd_file`, a required per-job
+ `status` (optional `stage`/`status_date`), `location`, `workplace`, `sponsorship`, and the flat
+ `job_level`/`required_yoe`/`salary_range` facts; no `total_compensation_range`). **The
+ `application-tracker` skill (`.agents/skills/application-tracker/SKILL.md`,
  "`meta.yaml` Schema") is the single canonical owner of the full schema and rules** — read it
  before writing or validating a `meta.yaml`; don't restate the field list elsewhere. Run
- `status.py --enrich-metadata <folder>` after saving the JD. The folder, not a field, is the
- status, and the role list is the canonical set of cover letters. Only create an application
+ `status.py --enrich-metadata <folder>` after saving the JD. The per-job `status` fields are the
+ fine-grained truth and the folder is their derived rollup, and the role list is the canonical set
+ of cover letters. Only create an application
  whose `location` matches the configured location policy (`config.location_policy()` — the
  candidate's preferred metros plus US-remote / `us_only` rule) — verify with
  `.agents/skills/application-tracker/scripts/status.py --check-locations`; a role that is

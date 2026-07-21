@@ -29,8 +29,9 @@ Use this skill when the user asks to:
 
 ## Application Folder Convention
 
-**Status is the folder an application lives in** — not a field. Each application is a
-folder `<company>-<role>-<YYYYMMDD>/` that sits inside one status folder:
+**Each `jobs:` entry carries its own `status`; the status folder an application lives in is the
+DERIVED overall status** — a rollup of the per-job statuses (see "Overall status" below). Each
+application is a folder `<company>-<role>-<YYYYMMDD>/` that sits inside one status folder:
 
 ```
 applications/6_drafted/<slug>/      # tailored, awaiting the user's review/decision
@@ -48,7 +49,7 @@ Each application folder keeps a clean **root** (finished deliverables + tracking
 
 | Location | File | Purpose |
 |----------|------|---------|
-| root | `meta.yaml` | Application metadata this skill manages (status is the folder, not a field) |
+| root | `meta.yaml` | Application metadata this skill manages (per-job `status`; the folder is the derived rollup) |
 | root | `<RESUME_STEM>.pdf` | Final resume PDF (committed) |
 | root | `<COVER_STEM>_<job title>.pdf` | Final cover letter PDF (committed), one per JD |
 | root | `<APPLICATION_STEM>_<job title>.txt` | Bundled copy-paste answers (COVER LETTER + WHY THIS COMPANY & ROLE + PAST EXPERIENCE), one per JD |
@@ -65,9 +66,14 @@ glob, so labeled names count.
 
 ## `meta.yaml` Schema
 
-Do **not** store the top-level status in `meta.yaml` — the status folder is the source of
-truth. `meta.yaml` holds the rest of the metadata, plus an optional free-form `stage` note
-for finer tracking while in `in_progress/` (e.g. "screen", "onsite", "offer").
+**Per-job `status` is the fine-grained source of truth; the status folder is the DERIVED overall
+status.** Each `jobs:` entry carries a required `status`
+(`drafted|applied|in_progress|rejected|ignored` — the same labels as the folders), an optional
+free-text `stage` (e.g. "recruiter screen", "onsite", "offer"), and an optional `status_date`
+(`YYYY-MM-DD`, stamped by tooling on each transition). The parent folder is the overall status
+rolled up from those per-job values (see "Overall status" below); the validator errors when the
+folder and the rollup disagree, and the scripts keep them in sync — a manual folder move must be
+re-synced via `status.py --update`. There is **no** top-level `status` or `stage` field.
 This skill is the canonical owner of the metadata schema. Resume-writer creates the
 initial file; job-search supplies posting facts; application-tracker validates and
 enriches them.
@@ -77,13 +83,14 @@ is deliberately flat and small. Company-scope fields sit at the top; everything 
 per posting lives in a **uniform `jobs:` list — one entry per posting, always a list even
 for a single role.** Every structured fact is `{min, max, confidence, source}` (job_level
 also carries a plain-English `normalized` word); `workplace` and `sponsorship` are single-word
-reads. There is no per-field provenance, no per-field dates, and no per-field links: the only
-dates are the top-level `research_date` (search date) and each posting's `posted_date`. The
+reads. There is no per-field provenance, no per-field dates, and no per-field links: the dates
+are the top-level `research_date` (search date), each posting's `posted_date`, and each posting's
+tooling-stamped `status_date`. The
 company-scope `channel` (how you found the lead) is named apart from the per-fact `source`
 (provenance) on purpose, so the two never collide.
 
 ```yaml
-job_metadata_schema_version: 3
+job_metadata_schema_version: 4
 company: "Google"
 research_date: "2026-04-16"  # search date: when the draft was generated
 channel: "linkedin"          # how you found it (free text; e.g. linkedin | referral | recruiter | cold)
@@ -91,11 +98,13 @@ referrer: "John Doe"         # who referred you (if applicable)
 recruiter_email: ""          # recruiter contact
 comp_notes: ""               # compensation expectations / negotiation notes
 next_action: "Follow up with John on 04/23"
-stage: ""                    # optional finer stage within in_progress (screen/onsite/offer)
 notes: ""                    # short inline notes (string or list of strings)
 jobs:
   - role: "ML Infrastructure Engineer"
     jd_file: "JD-ml-infrastructure-engineer.md"  # unique JD-<title>.md in source/
+    status: "applied"        # REQUIRED: drafted | applied | in_progress | rejected | ignored
+    status_date: "2026-04-20" # optional: date of this job's last status change (tooling-stamped)
+    stage: ""                # optional free text; meaningful mostly for in_progress (screen/onsite/offer)
     location: "Remote (US)"
     workplace: "remote"      # onsite | hybrid | remote | unknown (arrangement, not the city)
     url: "https://..."
@@ -124,10 +133,14 @@ jobs:
 rendering the pipeline table.
 
 Metadata rules:
-- Metadata uses the integer top-level `job_metadata_schema_version: 3`. There is **no
-  backward compatibility**: validators only accept version 3, and by default only validate
-  applications in the `drafted` folder (`status.py --check-metadata`); other status folders
-  are ignored unless explicitly targeted.
+- Metadata uses the integer top-level `job_metadata_schema_version: 4`. There is **no
+  backward compatibility**: validators only accept version 4, and `status.py --check-metadata`
+  validates **every** status folder by default (`--statuses <labels>` narrows to a subset).
+- Each `jobs:` entry carries a required `status` (`drafted|applied|in_progress|rejected|ignored`),
+  plus optional `stage` (free text) and `status_date` (`YYYY-MM-DD`, written by `status.py`
+  transitions — never fabricate it; absent is valid). The status folder must equal the rollup of
+  the per-job statuses (see "Overall status"); the validator errors on a mismatch and on any
+  top-level `status`/`stage` key.
 - **Always a `jobs:` list** — one entry per posting, even a single-role application (a
   one-element list). `job_level`, `required_yoe`, and `salary_range` live inside each
   `jobs:` entry, never at company scope. `total_compensation_range` is not part of the
@@ -161,6 +174,21 @@ Metadata rules:
   `JD-*.md` in the folder must be associated with one role. There is no positional or
   sorted-filename fallback.
 
+### Overall status (folder = derived rollup)
+
+The status folder is the per-job statuses rolled up by precedence — any job at a higher tier
+sets the folder:
+
+```
+in_progress > applied > drafted > rejected > ignored
+```
+
+So one role rejected + one in interview rolls up to `in_progress`; all roles rejected rolls up to
+`rejected`; all ignored to `ignored`. `status.py --update` / `--update-job` recompute this and move
+the folder to match, so the folder and the per-job statuses never disagree. A hand-moved folder
+that no longer matches its rollup fails `status.py --check-metadata` until you re-sync it with
+`status.py --update`.
+
 ### One resume, multiple roles (same company)
 
 The `jobs:` list is uniform, so a multi-role application is just a `jobs:` list with more
@@ -171,7 +199,7 @@ position-labeled filenames). The folder holds one `source/JD-<job title>.md` per
 each mapped one-to-one to a `jobs:` entry:
 
 ```yaml
-job_metadata_schema_version: 3
+job_metadata_schema_version: 4
 company: "Cohere"
 research_date: "2026-07-15"
 channel: "cold"
@@ -180,6 +208,9 @@ notes: ""
 jobs:
   - role: "Senior Software Engineer, Agent Infrastructure"
     jd_file: "JD-senior-software-engineer-agent-infrastructure.md"
+    status: "in_progress"    # this role reached an interview...
+    status_date: "2026-07-19"
+    stage: "onsite"
     location: "Remote (US)"
     workplace: "remote"
     url: "https://..."
@@ -191,6 +222,9 @@ jobs:
     salary_range: null
   - role: "Site Reliability Engineer, Inference Infrastructure"
     jd_file: "JD-site-reliability-engineer-inference-infrastructure.md"
+    status: "rejected"       # ...while this one was closed
+    status_date: "2026-07-18"
+    stage: ""
     location: "Remote (US)"
     workplace: "remote"
     url: "https://..."
@@ -202,9 +236,11 @@ jobs:
     salary_range: null
 ```
 
-`status.py` renders such an application as its first role plus `"(+N more)"`.
+The two per-job statuses above roll up to `in_progress`, so this folder lives in
+`applications/4_in_progress/`. `status.py` renders such an application as its first role plus
+`"(+N more)"`, tagging `[mixed]` when the postings' statuses differ.
 
-### Status Values (each is a folder under `applications/`)
+### Status Values (folder labels, and the per-job `status` values)
 
 | Status folder | Meaning |
 |---------------|---------|
@@ -224,6 +260,29 @@ jobs:
 
 Prints a table of all applications with company, role, date, status, source, and files. Shows funnel summary if multiple statuses exist.
 
+### Filter Postings
+
+`status.py` reports one row per application; to slice **one row per `jobs:` posting** across every
+status folder, use the posting-granularity filter:
+
+```bash
+# Applied/in-progress postings that are remote and a strong fit
+.venv/bin/python .agents/skills/application-tracker/scripts/filter_jobs.py \
+  --status applied,in_progress --workplace remote --fit strong
+# Backend roles you qualify for (<=6 YOE), most-senior first
+.venv/bin/python .agents/skills/application-tracker/scripts/filter_jobs.py \
+  --role backend --max-yoe 6 --sort level
+# Count in-progress postings at the onsite stage, as JSON
+.venv/bin/python .agents/skills/application-tracker/scripts/filter_jobs.py \
+  --status in_progress --stage onsite --json
+```
+
+Filters AND across flags and OR within a comma list: `--status` · substring `--company` /
+`--role` / `--location` / `--stage` / `--slug` / `--channel` · `--workplace` · `--sponsorship` ·
+`--fit` · `--min-level` / `--max-level` · `--min-salary` · `--max-yoe` · `--posted-after` ·
+`--since`. Output is an aligned table (or `--json` / `--count`), with
+`--sort company|date|level|salary|fit|status` and `--limit N`.
+
 ### Enrich / Validate Job Metadata
 
 After the resume-writer saves `meta.yaml` and the full JD, populate any missing
@@ -234,32 +293,50 @@ level/experience/compensation facts:
 .venv/bin/python .agents/skills/application-tracker/scripts/status.py \
   --enrich-metadata applications/6_drafted/<slug>/
 
-# Fleet preview: dry-run by default. Review before adding --write.
-.venv/bin/python .agents/skills/application-tracker/scripts/backfill_job_metadata.py \
-  --statuses drafted,applied,in_progress,rejected,ignored
+# Fleet preview: dry-run by default, covers ALL status folders. Review before adding --write.
+.venv/bin/python .agents/skills/application-tracker/scripts/backfill_job_metadata.py
 
 .venv/bin/python .agents/skills/application-tracker/scripts/status.py --check-metadata
 ```
 
 The editor preserves comments, quotes, blank lines, newline style, and unrelated fields.
 Unknown or unstated facts remain `null`/`not_stated`—never fabricate them. Validation is
-strict: only schema version 3 is accepted, and `--check-metadata` validates the `drafted`
-folder by default.
+strict: only schema version 4 is accepted, and `--check-metadata` validates **every** status
+folder by default (`--statuses <labels>` narrows the scope).
 
 ### Update Status
 
-Status changes by **moving the application folder** into the target status folder. The
-user usually does this by hand; you can also do it with:
+Two commands write the per-job `status` fields and keep the folder in sync. **Only run them when
+the user asks** — they manage their own pipeline moves.
+
+**Whole-application transition** — sets **every** posting's `status` to the target and stamps
+today's `status_date`, then moves the folder:
 
 ```bash
 .venv/bin/python .agents/skills/application-tracker/scripts/status.py --update <slug> <status>
 ```
 
-where `<status>` is one of `drafted | applied | in_progress | rejected | ignored`.
-Example: `.venv/bin/python .agents/skills/application-tracker/scripts/status.py --update google-ml-engineer-20260416 in_progress`
-moves `applications/5_applied/google-ml-engineer-20260416/` to `applications/4_in_progress/`.
+`<status>` is one of `drafted | applied | in_progress | rejected | ignored`. Example:
+`... --update google-ml-engineer-20260416 in_progress` stamps every job and moves
+`applications/5_applied/google-ml-engineer-20260416/` to `applications/4_in_progress/`.
 
-Only move a folder when the user asks — they manage their own pipeline moves.
+**Per-posting transition** — change one role in a multi-posting app; the tool recomputes the
+rollup and moves the folder only if the overall status changed:
+
+```
+status.py --update-job <slug> <role-match> <status> [--stage TEXT]
+  <role-match>: case-insensitive substring of jobs[].role, OR a 1-based index;
+                must match exactly one posting (else lists candidates, exits non-zero).
+  <status>:     drafted | applied | in_progress | rejected | ignored | keep
+                ('keep' = stage-only edit; requires --stage)
+Examples:
+  status.py --update-job acme-multi-20260720 "Backend Engineer" in_progress --stage "onsite"
+  status.py --update-job acme-multi-20260720 2 rejected
+  status.py --update-job acme-multi-20260720 backend keep --stage "offer"
+```
+
+If the user moves a folder **by hand**, it can drift from the rollup — re-sync it by running
+`status.py --update <slug> <status>` for the folder's new status.
 
 ### Record Interview Notes
 

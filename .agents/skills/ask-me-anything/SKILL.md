@@ -41,10 +41,12 @@ tracks them through a pipeline. Content (your experience, in markdown/YAML) and 
                                                                           behavioral-interview-prep
 ```
 
-**Status is the folder.** Every application is a folder `applications/<company>-<role>-<date>/`
-that lives inside a numbered status folder. New drafts land in `6_drafted/`; *you* move the
-folder to `5_applied/`, `4_in_progress/`, `3_rejected/`, or `2_ignored/` as things progress
-(the agent never moves it unless you ask). See `application-tracker` for details.
+**Per-job status, folder = overall status.** Every application is a folder
+`applications/<company>-<role>-<date>/` inside a numbered status folder. Each posting in its
+`meta.yaml` `jobs:` list carries its own `status`; the folder is the derived overall status
+(new drafts land in `6_drafted/`, then `5_applied/`, `4_in_progress/`, `3_rejected/`, or
+`2_ignored/` as things progress). Transitions happen only when *you* ask — via
+`status.py --update` / `--update-job`. See `application-tracker` for details.
 
 ## Prerequisites (install once)
 
@@ -171,8 +173,9 @@ Check pipeline health any time:
 ```
 The `application-tracker` skill also enriches/validates `meta.yaml` job metadata (level,
 YOE, salary, sponsorship), records interview notes in `notes.md`, and keeps the search
-skip-logs in sync (`status.py --sync-log`). **The agent never moves a folder between status
-folders unless you ask** — status is the folder, and pipeline moves are your decision.
+skip-logs in sync (`status.py --sync-log`). **The agent never changes application status
+unless you ask** — per-job statuses and the matching folder move are your decision, made
+through `status.py --update` / `--update-job`.
 
 **Dependencies:** pyyaml only (no network, no LibreOffice).
 

@@ -1,13 +1,16 @@
 # Canary set — application-tracker skill
-# Grounded in .agents/skills/application-tracker/{SKILL.md,LESSONS.md} (meta.yaml schema v3;
-# --check-metadata validates the drafted folder by default; no total_compensation_range; every
-# structured fact is {min,max,confidence,source}; jobs: is always a list). Uses the shipped
-# example drafted app. Run per evals/README.md; judge per evals/rubrics/judging.md.
+# Grounded in .agents/skills/application-tracker/{SKILL.md,LESSONS.md} (meta.yaml schema v4;
+# each jobs: entry carries a per-job status and the folder is the DERIVED rollup by precedence
+# in_progress > applied > drafted > rejected > ignored; --check-metadata validates every status
+# folder by default; no total_compensation_range; every structured fact is {min,max,confidence,
+# source}; jobs: is always a list). Uses the shipped example drafted app. Run per evals/README.md;
+# judge per evals/rubrics/judging.md.
 skill: application-tracker
 default_setup: >
   config.yaml unset -> config.example.yaml + examples/** fallback. The example drafted app is
-  examples/applications/6_drafted/example-corp-senior-software-engineer/ with a valid v3
-  meta.yaml. No network, no LibreOffice, no private overlay needed (pyyaml only).
+  examples/applications/6_drafted/example-corp-senior-software-engineer/ with a valid v4
+  meta.yaml (each jobs entry status: drafted). No network, no LibreOffice, no private overlay
+  needed (pyyaml only).
 
 canaries:
   - id: at-pipeline-health
@@ -15,11 +18,11 @@ canaries:
     prompt: "How's my pipeline looking? What needs my attention?"
     setup: "Default setup. Runs status.py over the examples/applications tree."
     expected_behavior:
-      - "Runs `.venv/bin/python .agents/skills/application-tracker/scripts/status.py` and reads status from the FOLDER each app lives in (drafted/applied/in_progress/rejected/ignored), not from any meta.yaml field."
+      - "Runs `.venv/bin/python .agents/skills/application-tracker/scripts/status.py` and reads each app's OVERALL status from the FOLDER it lives in (drafted/applied/in_progress/rejected/ignored) — the derived rollup of its per-job `status` fields, which the folder must agree with."
       - "Summarizes the funnel and highlights apps needing action (non-empty `next_action`) and stale ones (applied > ~2 weeks with no change)."
       - "Does not move any folder or change any status (pipeline moves are the user's decision)."
     failure_modes:
-      - "Reads a `status:` field from meta.yaml instead of using the folder."
+      - "Reports an app's overall status from a single posting's per-job `status` instead of the folder/rollup (which must agree)."
       - "Moves or 'advances' an application without being asked."
     primary_metric: rubric_pass
     efficiency_metrics: [total_tokens, wall_clock_s, tool_calls]
@@ -27,15 +30,15 @@ canaries:
   - id: at-validate-drafted-metadata
     requires_overlay: false
     prompt: "Validate the job metadata on my drafted applications before I render anything."
-    setup: "Default setup. Uses status.py --check-metadata (validates the drafted folder by default)."
+    setup: "Default setup. Uses status.py --check-metadata (now validates every status folder by default; --statuses drafted narrows to the drafted queue)."
     expected_behavior:
-      - "Runs `status.py --check-metadata`; validation is strict schema v3 and by default only checks the `drafted` folder — other status folders are ignored unless explicitly targeted."
-      - "Confirms each meta.yaml is `job_metadata_schema_version: 3` with a `jobs:` LIST (even a single role is a one-element list), and rejects a legacy v2 file or a `total_compensation_range` key."
-      - "Confirms each jobs entry carries valid `workplace` + `sponsorship` words and complete `job_level` / `required_yoe` / `salary_range` structures ({min,max,confidence,source}; job_level adds `normalized`); `salary_range` may be null but the level/YOE structures must exist."
-      - "Confirms every jobs entry has a unique, existing basename-only `jd_file` and every JD-*.md maps to one role (no positional/sorted-filename fallback)."
+      - "Runs `status.py --check-metadata`, which now validates EVERY status folder by default (`--statuses drafted` narrows to just the drafted queue the user asked about)."
+      - "Confirms each meta.yaml is `job_metadata_schema_version: 4` with a `jobs:` LIST (even a single role is a one-element list), and rejects a legacy v3 file or a `total_compensation_range` key."
+      - "Confirms each jobs entry carries a REQUIRED per-job `status` (drafted|applied|in_progress|rejected|ignored) plus valid `workplace` + `sponsorship` words and complete `job_level` / `required_yoe` / `salary_range` structures ({min,max,confidence,source}; job_level adds `normalized`); `salary_range` may be null but the level/YOE structures must exist."
+      - "Confirms every jobs entry has a unique, existing basename-only `jd_file` and every JD-*.md maps to one role (no positional/sorted-filename fallback), and that the folder label equals the rollup of the per-job statuses."
     failure_modes:
-      - "Validates all status folders by default, or accepts a v2 / total_compensation_range file."
-      - "Treats a null salary_range as invalid, or misses a missing/duplicate jd_file mapping."
+      - "Only checks the `drafted` folder as if that were the default, or accepts a legacy v3 / total_compensation_range file."
+      - "Misses a required per-job `status`, treats a null salary_range as invalid, or misses a missing/duplicate jd_file mapping."
     primary_metric: rubric_pass
     efficiency_metrics: [total_tokens, wall_clock_s, tool_calls]
 
@@ -61,11 +64,30 @@ canaries:
     prompt: "I just submitted the Example Corp platform application — mark it as applied."
     setup: "Default setup. The app currently sits in examples/applications/6_drafted/."
     expected_behavior:
-      - "Changes status by MOVING the folder into the target status folder (drafted -> applied), e.g. `status.py --update <slug> applied`, because status is the folder."
-      - "Acts only because the user explicitly asked; does not add a `status:` field to meta.yaml."
+      - "Runs `status.py --update <slug> applied` — a whole-application transition that stamps EVERY posting's `status: applied` + today's `status_date` AND moves the folder drafted -> applied, keeping the folder and the per-job statuses consistent."
+      - "Acts only because the user explicitly asked; does not hand-edit meta.yaml or move the folder outside the script."
       - "Reminds the user to re-run `status.py --sync-log` so job-search skips the now-applied posting."
     failure_modes:
-      - "Records status in meta.yaml instead of moving the folder."
+      - "Hand-edits the folder or the YAML instead of using `status.py --update` (leaving the per-job `status` fields and the folder out of sync)."
       - "Moves folders proactively / without an explicit request."
+    primary_metric: rubric_pass
+    efficiency_metrics: [total_tokens, wall_clock_s, tool_calls]
+
+  - id: at-update-one-role-multi-app
+    requires_overlay: false
+    prompt: "One of the two roles in my Acme application — the Backend Engineer one — just reached an onsite interview. Update it."
+    setup: >
+      Default setup, plus a multi-role application acme-multi-20260720 in
+      examples/applications/5_applied/ whose meta.yaml jobs: list has two postings (Backend
+      Engineer and Frontend Engineer), both status: applied (so the folder rolls up to applied).
+    expected_behavior:
+      - "Runs `status.py --update-job acme-multi-20260720 \"Backend Engineer\" in_progress --stage \"onsite\"` — a single-posting transition (role matched by case-insensitive substring or a 1-based index) that resolves to exactly one job."
+      - "Only the Backend Engineer posting's `status` becomes in_progress (with its status_date + stage `onsite`); the Frontend Engineer posting stays `applied`, untouched."
+      - "The rollup recomputes to in_progress, so the folder follows automatically from 5_applied to 4_in_progress — the agent does not hand-move it."
+      - "Acts only because the user asked, and reminds the user to re-run `status.py --sync-log`."
+    failure_modes:
+      - "Uses `--update <slug> in_progress`, moving the whole application and stamping BOTH roles instead of just the one."
+      - "Edits both roles, or transitions the Frontend role by mistake."
+      - "Hand-edits meta.yaml or hand-moves the folder instead of using the script (leaving folder and per-job statuses out of sync)."
     primary_metric: rubric_pass
     efficiency_metrics: [total_tokens, wall_clock_s, tool_calls]
