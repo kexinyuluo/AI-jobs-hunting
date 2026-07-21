@@ -205,6 +205,33 @@ companies:
   - {name: Arista Networks, ats: smartrecruiters, token: aristanetworks, tags: [bigtech, enterprise-infra]}
   - {name: Autodesk, ats: workday, token: autodesk, host: autodesk.wd1.myworkdayjobs.com, site: Ext, tags: [bigtech, saas]}
   - {name: Workday, ats: workday, token: workday, host: workday.wd5.myworkdayjobs.com, site: Workday, tags: [bigtech, saas]}
+  - {name: Salesforce, ats: workday, token: salesforce, host: salesforce.wd12.myworkdayjobs.com, site: External_Career_Site, tags: [bigtech, saas]}
+
+  # ---- Coverage additions (verified reachable 2026-07-21) ----
+  - {name: DoorDash, ats: greenhouse, token: doordashusa, tags: [bigtech, consumer]}
+  - {name: Lyft, ats: greenhouse, token: lyft, tags: [bigtech, consumer]}
+  - {name: Pinterest, ats: greenhouse, token: pinterest, tags: [bigtech, consumer]}
+  - {name: Twitch, ats: greenhouse, token: twitch, tags: [bigtech, consumer, gaming]}
+  - {name: Nextdoor, ats: greenhouse, token: nextdoor, tags: [consumer]}
+  - {name: Wiz, ats: greenhouse, token: wizinc, tags: [dev-tools, saas]}
+  - {name: Vanta, ats: ashby, token: vanta, tags: [dev-tools, saas]}
+  - {name: Gong, ats: greenhouse, token: gongio, tags: [saas]}
+  - {name: Box, ats: greenhouse, token: boxinc, tags: [saas, enterprise-infra]}
+  - {name: Verkada, ats: greenhouse, token: verkada, tags: [enterprise-infra]}
+  - {name: Ripple, ats: greenhouse, token: ripple, tags: [fintech]}
+  - {name: SambaNova, ats: greenhouse, token: sambanovasystems, tags: [ai-infra, semiconductor]}
+  - {name: Anduril, ats: greenhouse, token: andurilindustries, tags: [enterprise-infra]}
+  - {name: Cortex, ats: greenhouse, token: cortex, tags: [dev-tools]}
+  - {name: Sourcegraph, ats: greenhouse, token: sourcegraph91, tags: [dev-tools]}
+  - {name: Cerebras, ats: ashby, token: cerebras, tags: [ai-infra, semiconductor]}
+  - {name: Zapier, ats: ashby, token: zapier, tags: [saas]}
+  - {name: Miro, ats: ashby, token: miro, tags: [saas]}
+  - {name: 1Password, ats: ashby, token: 1password, tags: [enterprise-infra, saas]}
+  - {name: Airwallex, ats: ashby, token: airwallex, tags: [fintech]}
+  - {name: Ironclad, ats: ashby, token: ironcladhq, tags: [saas]}
+  - {name: ClickUp, ats: ashby, token: clickup, tags: [saas]}
+  - {name: Canva, ats: smartrecruiters, token: canva, tags: [consumer]}
+  - {name: Adobe, ats: workday, token: adobe, host: adobe.wd5.myworkdayjobs.com, site: external_experienced, tags: [bigtech, saas]}
   - {name: PayPal, ats: workday, token: paypal, host: paypal.wd1.myworkdayjobs.com, site: Jobs, tags: [bigtech, fintech]}
   - {name: eBay, ats: workday, token: ebay, host: ebay.wd5.myworkdayjobs.com, site: apply, tags: [bigtech, consumer]}
   - {name: Yahoo, ats: workday, token: ouryahoo, host: ouryahoo.wd5.myworkdayjobs.com, site: careers, tags: [bigtech, consumer]}
