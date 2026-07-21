@@ -154,19 +154,19 @@ Only hand off postings that passed the location policy (`config.location_policy(
     --json /tmp/matches.json --select "rank 1"   # or --select "Company/Title"
 ```
 It creates `applications/6_drafted/<slug>/`, saves `source/JD-<job title>.md` **verbatim** (via
-`fetch_jd`), and writes a schema-v3 `meta.yaml` carrying the row's `location`, `url`,
-`posted_date`, `workplace`, `sponsorship`, `job_level`, `required_yoe`, and `salary_range` — so
-nothing is hand-transcribed (refuses to overwrite an existing folder). `meta.yaml` is always
-`job_metadata_schema_version: 3` with a uniform **`jobs:` list — one entry per posting, even a
-single role** — and every entry carries an exact `jd_file`; never pair roles and JDs by index or
-sorted filename. If `handoff.py` reports gaps, run
+`fetch_jd`), and writes a schema-v4 `meta.yaml` carrying the row's `status: "drafted"`, `location`,
+`url`, `posted_date`, `workplace`, `sponsorship`, `job_level`, `required_yoe`, and `salary_range` —
+so nothing is hand-transcribed (refuses to overwrite an existing folder). `meta.yaml` is always
+`job_metadata_schema_version: 4` with a uniform **`jobs:` list — one entry per posting, even a
+single role** (each entry created `status: "drafted"`) — and every entry carries an exact
+`jd_file`; never pair roles and JDs by index or sorted filename. If `handoff.py` reports gaps, run
 `.agents/skills/application-tracker/scripts/status.py --enrich-metadata <folder>` to fill missing
 facts (it consults the reusable company cache for level/YOE).
 
 Then hand off — **do not tailor here:**
 - **`resume-writer`** → tailors the scaffolded folder (add `source/tailored.yaml`).
 - **`application-tracker`** → records metadata; the user moves the folder to
-  `applications/5_applied/` once submitted (status is the folder).
+  `applications/5_applied/` once submitted; the folder is the derived overall status (rollup).
 
 After creating a draft, run `.agents/skills/application-tracker/scripts/status.py --sync-log` so the
 posting lands in `applications-log.yaml` and the company in `company-search-log.yaml`, then confirm
@@ -226,7 +226,7 @@ An ordinary search stops above. Reach for `reference.md` only for these:
 | `scripts/search_jobs.py` | Main pipeline (two-stage fetch → filter → score → rank → output); `--stage`, `--ai-native-only`, `--no-jobspy`, `--max-per-company`, `--top-k`, `--max-age-days`, `--visa-policy`, `--refilter latest`, `--print-full` |
 | `scripts/company_roles.py` | Re-check ONE company's live board with a location-policy verdict (single-company re-search + JD dump) |
 | `scripts/fetch_jd.py` | Fetch one posting page and save its readable text **verbatim** (`<URL> --out <path>`; no summarization) |
-| `scripts/handoff.py` | Scaffold an application folder from one selected search row (`--json <search.json> --select <"rank N"\|"Company/Title">`): folder + verbatim JD (via `fetch_jd`) + schema-v3 `meta.yaml`; validates before exit, refuses to overwrite |
+| `scripts/handoff.py` | Scaffold an application folder from one selected search row (`--json <search.json> --select <"rank N"\|"Company/Title">`): folder + verbatim JD (via `fetch_jd`) + schema-v4 `meta.yaml` (each posting `status: "drafted"`); validates before exit, refuses to overwrite |
 | `scripts/validate_companies.py` | Check that company tokens still resolve (skips identity-only rows) |
 | `scripts/build_sponsor_index.py` | Optional DOL sponsorship enrichment (see reference.md) |
 | `scripts/registry.py` | Registry loader + resolver (canonical name, blacklist, poll targets, `tagged_keys` for the AI-native set) |

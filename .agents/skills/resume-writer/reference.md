@@ -29,8 +29,8 @@ Confirm the slug path does not already exist under any status folder.
 
 Newly generated applications always go under **`applications/6_drafted/`** — this is the
 user's review queue. (The user later moves the folder into `applied/`, `in_progress/`,
-`rejected/`, or `ignored/` themselves; the folder is the source of truth for status, so
-do not add a `status` field to `meta.yaml`.)
+`rejected/`, or `ignored/` themselves; each `jobs:` entry carries its own `status`, and the folder
+is the derived rollup of those — a freshly created application is all `status: "drafted"`.)
 
 Create the folder and its `source/` subfolder. Put the files listed below in place:
 
@@ -45,7 +45,8 @@ Weak-or-Selective validation honors a term mentioned in any of the JDs.
 different** (different companies always get their own folder). See "One resume, multiple roles
 (same company)" below for the full decision.
 
-**`meta.yaml`** — Application metadata (no `status` field — the folder is the status).
+**`meta.yaml`** — Application metadata (every `jobs:` entry created with `status: "drafted"`; the
+folder is the derived rollup of the per-job statuses).
 Always a **uniform `jobs:` list** — one entry per posting, even a single role (a
 one-element list). Structured facts (`workplace`, `sponsorship`, `job_level`,
 `required_yoe`, `salary_range`) live inside each `jobs:` entry; company-scope fields stay
@@ -55,7 +56,7 @@ each fact's `source` (provenance) so they never collide.
 Minimal creation-time skeleton (single posting — a one-element `jobs:` list; a multi-role
 folder is the same list with one entry per posting):
 ```yaml
-job_metadata_schema_version: 3
+job_metadata_schema_version: 4
 company: "Company Name"
 research_date: "YYYY-MM-DD"   # search date: when you generated this draft
 channel: ""                   # how you found it (linkedin | referral | recruiter | cold)
@@ -65,6 +66,7 @@ notes: ""
 jobs:
   - role: "Role Title"
     jd_file: "JD-role-title.md"
+    status: "drafted"         # REQUIRED at creation; every new jobs: entry is "drafted"
     location: "City, ST"      # the posting's location, exactly as listed (city/hybrid/remote)
     workplace: ""             # enriched below: onsite | hybrid | remote | unknown
     url: ""
@@ -76,15 +78,16 @@ jobs:
     salary_range: null        # enriched below: {min, max, confidence, source}, USD/year, or null
 ```
 
-Write only this creation-time set: `location` verbatim per `jobs:` entry (must satisfy the
-location policy — see "Location gate"), and every `jobs:` entry's exact `jd_file` (never
+Write only this creation-time set: each `jobs:` entry's `status: "drafted"`, its `location`
+verbatim (must satisfy the location policy — see "Location gate"), and its exact `jd_file` (never
 associate JDs by index or sorted filename). **The `application-tracker` skill
 (`.agents/skills/application-tracker/SKILL.md`, "`meta.yaml` Schema") is the single canonical
-owner of the full field list, rules, and later fields (`recruiter_email`, `comp_notes`,
-`stage`)** — don't restate the schema here. After the full JD is saved, fill the empty
-placeholders by handing off to its enrichment (never add a `status` field — status is the
-folder). Here `applications/` stands for `config.applications_root()` — with the example
-config, `examples/applications/`:
+owner of the full field list, rules, and later fields (`recruiter_email`, `comp_notes`, and each
+job's `stage`/`status_date`)** — don't restate the schema here. After the full JD is saved, fill
+the empty structured placeholders by handing off to its enrichment (enrichment never sets
+`status` — creation already stamped `drafted`, and later transitions go through
+`status.py --update`/`--update-job`). Here `applications/` stands for `config.applications_root()`
+— with the example config, `examples/applications/`:
 
 ```bash
 .venv/bin/python .agents/skills/application-tracker/scripts/status.py \
@@ -208,9 +211,9 @@ Calibrated constants and the font / margin / line-spacing levers: LESSONS.md →
 
 ## Render & validate — operational detail
 
-`check.py` strictly enforces schema version 3: `meta.yaml` must be `job_metadata_schema_version: 3`
-with a `jobs:` list, and each entry must carry a valid `workplace` and `sponsorship` word
-plus complete `job_level`, `required_yoe`, and `salary_range` structures. `salary_range`
+`check.py` strictly enforces schema version 4: `meta.yaml` must be `job_metadata_schema_version: 4`
+with a `jobs:` list, and each entry must carry a required per-job `status` plus a valid `workplace`
+and `sponsorship` word and complete `job_level`, `required_yoe`, and `salary_range` structures. `salary_range`
 may be `null` when no pay range is posted; the `job_level` and `required_yoe` structures
 must still exist with their bounds (unstated bounds are `null`).
 
@@ -467,8 +470,8 @@ Handle the whole set as a **single application folder** — not one folder per r
    `.agents/skills/resume-writer/scripts/check.py` reads and concatenates every
    `source/JD-*.md`, so a Weak/Selective skill mentioned in *any* of the JDs validates.
 2. **`meta.yaml`** — use the `jobs:` list form (see Step 1). One entry per posting with
-   `role`, `jd_file` (the `JD-<job title>.md` name), `url`, `posted_date`, the four
-   structured job metadata fields, and an optional `fit` note. Keep company-wide fields
+   `role`, `jd_file` (the `JD-<job title>.md` name), `status: "drafted"`, `url`, `posted_date`,
+   the four structured job metadata fields, and an optional `fit` note. Keep company-wide fields
    (`company`, `research_date`, `source`, `notes`) at the top level. Run
    `status.py --enrich-metadata <folder>` after every JD is saved.
 3. **Analyze + gap-analyze every JD** (Steps 2-3), then tailor the **one resume** to the

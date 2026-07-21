@@ -9,20 +9,23 @@ Lifecycle tags: each `##` section carries `<!-- added: <first-seen> · last_conf
 
 ## Status Management
 <!-- added: 2026-04-16 · last_confirmed: 2026-07-19 · status: active -->
-- Status is the folder the application lives in (`drafted` / `applied` / `in_progress` /
-  `rejected` / `ignored`), not a `meta.yaml` field. Move the folder to change status
-  (`status.py --update <slug> <status>`). The user moves folders themselves after `drafted` —
-  only move on explicit request, and move promptly (a stale folder makes pipeline reviews useless).
+- Each `jobs:` entry has a per-job `status` (`drafted` / `applied` / `in_progress` / `rejected` /
+  `ignored`); the folder is the DERIVED overall status, rolled up by precedence
+  `in_progress > applied > drafted > rejected > ignored`. Change status only on explicit request —
+  `status.py --update <slug> <status>` (whole app: stamps every job + moves the folder) or
+  `--update-job <slug> <role-match> <status>` (one posting: recomputes the rollup + moves if it
+  changed). A hand-moved folder must be re-synced via `--update`, else `--check-metadata` flags the
+  folder↔rollup mismatch. Move promptly (a stale folder makes pipeline reviews useless).
 
 ## Metadata
 <!-- added: 2026-04-16 · last_confirmed: 2026-07-19 · status: active -->
 - Always record `channel` (referral/cold/recruiter/linkedin) — it predicts conversion rates;
   `next_action` with a date keeps momentum (review weekly).
 - Job facts are per posting and live inside each `jobs:` entry: `job_level` (incl. approximate
-  float-bounded Google equivalent), `required_yoe`, and `salary_range` — schema **v3**, no
-  `total_compensation_range`. Live JD values win; the dated, sourced company-level cache
+  float-bounded Google equivalent), `required_yoe`, and `salary_range` — schema **v4** (per-job
+  `status`; no `total_compensation_range`). Live JD values win; the dated, sourced company-level cache
   (`config.company_levels_path()`, its own schema-v2 file — the company-levels cache format, a
-  different file from `meta.yaml`, whose only supported schema is v3) is level/YOE fallback only.
+  different file from `meta.yaml`, whose only supported schema is v4) is level/YOE fallback only.
 - Never round-trip application `meta.yaml` through `safe_dump`. Use the node-anchored metadata
   editor/backfill so comments, quoting, blank lines, and CRLF survive; multi-role enrichment
   requires an exact `jd_file` for each job.

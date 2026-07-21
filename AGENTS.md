@@ -68,7 +68,7 @@ Full directory table (every script + per-skill row): `docs/AGENTS-ANNEX.md` §3.
 | `config.yaml` (git-ignored) / `config.example.yaml` (tracked) | Candidate identity, paths, output-stem config; example is the "Jordan Rivers" placeholder + fallback |
 | `config.profile_md_path()` / `config.baseline_path()` | Candidate profile (source of truth for tailoring) / canonical transcription of the approved resume (start point for every `tailored.yaml`) |
 | `.agents/skills/job-search/companies.yaml` | Canonical **public** registry (company identity, ATS config, tags); candidate blacklist rows live in git-ignored `private/job-search/blacklist.yaml` |
-| `config.applications_root()` / `config.discoveries_dir()` | All applications in numbered status folders `0_profile`…`6_drafted` (the folder is the status) / ad-hoc job-search research |
+| `config.applications_root()` / `config.discoveries_dir()` | All applications in numbered status folders `0_profile`…`6_drafted` (the folder is the derived overall status) / ad-hoc job-search research |
 | `.agents/skills/` | Canonical skills dir (PUBLIC skills — see Public vs Private; private `coding-interview` via symlink) |
 | `scripts/shared/`, `scripts/vendoring/`, `scripts/maintenance/`, `scripts/metrics/`, `scripts/publish/` | Canonical toolkit modules; vendoring; maintenance/gardener; budget metrics; publish/leak-guard |
 | `tmp/` | Gitignored scratch (purpose-named subfolders); never committed |
@@ -135,7 +135,7 @@ company-level import, log sync/record, DOCX extract, vendoring, hook install, de
 .venv/bin/python .agents/skills/resume-writer/scripts/render.py applications/6_drafted/<slug>/
 # Show all applications and their status (status = which folder each app lives in)
 .venv/bin/python .agents/skills/application-tracker/scripts/status.py
-# Populate/validate schema-v3 metadata (level, YOE, salary) from JD + cache
+# Populate/validate schema-v4 metadata (per-job status, level, YOE, salary) from JD + cache
 .venv/bin/python .agents/skills/application-tracker/scripts/status.py --enrich-metadata applications/6_drafted/<slug>/
 # Move an application to a different status folder (drafted|applied|in_progress|rejected|ignored)
 .venv/bin/python .agents/skills/application-tracker/scripts/status.py --update <slug> applied
@@ -161,9 +161,10 @@ Each expands in the annex; the bolded name is the canonical section.
 
 ## Application Folder Convention
 
-Each application is a folder `<company>-<role>-<YYYYMMDD>/` under `applications/6_drafted/`; **status
-is the parent status folder** (`0_profile`…`6_drafted`; the **user** moves folders, or use `status.py
---update <slug> <status>` — agents never move them unless asked). One resume covers the folder, but
+Each application is a folder `<company>-<role>-<YYYYMMDD>/` under `applications/6_drafted/`; **each
+`jobs:` entry carries a per-job `status`, and the parent status folder is the derived overall status
+(rollup) — the two must agree** (`0_profile`…`6_drafted`; the **user** moves folders, or use
+`status.py --update`/`--update-job` — agents never move them unless asked). One resume covers the folder, but
 **cover letters are one-to-one with JDs** — one `<COVER_STEM>_<job title>.pdf` + one bundled
 `<APPLICATION_STEM>_<job title>.txt` per `meta.yaml` role; `render.py`/`cover_letter.py` emit all
 names automatically. Slug: lowercase, hyphens (`google-ml-engineer-20260416`). The
@@ -172,7 +173,7 @@ file tree:
 
 ```
 applications/6_drafted/<slug>/                     # multi-role: repeat cover/txt/JD per posting
-├── meta.yaml                                    # tracking metadata (status = the folder)
+├── meta.yaml                                    # tracking metadata (per-job status; folder = derived rollup)
 ├── <RESUME_STEM>.pdf                            # ONE final resume (for humans/email)
 ├── <COVER_STEM>_<Role>.pdf                      # one cover-letter PDF per JD
 ├── <APPLICATION_STEM>_<Role>.txt               # one bundled copy-paste packet per JD

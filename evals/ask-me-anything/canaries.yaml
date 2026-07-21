@@ -1,7 +1,7 @@
 # Canary set — ask-me-anything skill
 # Grounded in .agents/skills/ask-me-anything/SKILL.md: the five-step workflow (0 Setup ->
 # 1 Profile & filters -> 2 Search -> 3 Generate -> 4 Review & track -> 5 Interview prep), the
-# repo structure, per-step dependencies, 'status is the folder', and the public vs private
+# repo structure, per-step dependencies, per-job status + derived-rollup folder, and the public vs private
 # (private/ overlay) model. This skill ORIENTS and routes — it does NOT do the work itself.
 # Run per evals/README.md; judge per evals/rubrics/judging.md.
 skill: ask-me-anything
@@ -31,7 +31,7 @@ canaries:
     setup: "Default setup."
     expected_behavior:
       - "Lays out the five steps in order and maps each to its skill — 1 Profile & filters -> job-search profile; 2 Search -> job-search; 3 Generate -> resume-writer; 4 Review & track -> application-tracker; 5 Interview prep -> company-research + behavioral-interview-prep (with Step 0 Setup as the one-time prerequisite)."
-      - "States 'status is the folder' — drafts land in 6_drafted/ and the USER moves the folder to 5_applied / 4_in_progress / 3_rejected / 2_ignored (the agent never moves it unless asked)."
+      - "States the status model — each posting's status lives in meta.yaml jobs:, the folder is the derived overall status (drafts land in 6_drafted/, then 5_applied / 4_in_progress / 3_rejected / 2_ignored), and the USER decides every transition (the agent never changes status unless asked)."
       - "Notes the per-step dependencies at the right altitude (e.g. Step 2 needs network + python-jobspy; Step 3 needs LibreOffice) without overloading."
     failure_modes:
       - "Wrong step order, or mis-assigns a skill to a step (e.g. resume-writer for search)."
