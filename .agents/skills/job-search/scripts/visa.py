@@ -53,6 +53,29 @@ NEGATIVE = [
     "gc only",
     "green card required",
     "permanent resident only",
+    # Citizen-OR-green-card requirements (ITAR / US Export Control roles) — the
+    # candidate needs sponsorship, so "must be a citizen OR green-card holder"
+    # excludes them just as hard as "citizens only". (Caught 2026-07-21:
+    # Paperless Parts said "require US Citizenship or Green Card Holder".)
+    "citizenship or green card",
+    "citizen or green card",
+    "citizenship or a green card",
+    "citizen or a green card",
+    "green card or us citizen",
+    "green card or u.s. citizen",
+    "green card or citizen",
+    "green card holder or us citizen",
+    "citizenship or permanent resident",
+    "citizen or permanent resident",
+    "citizenship or permanent residency",
+    # Export-control roles that *require* citizen/GC status. Keep phrasing specific:
+    # bare "itar" appears in company-wide boilerplate (false positives), so match
+    # only the "…export control…and require [citizen/GC]" construction.
+    "export control laws and require",
+    "export control and require",
+    "export control regulations and require",
+    "must be a us person",
+    "must be a u.s. person",
 ]
 
 # Explicit offers -> "yes".
