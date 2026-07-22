@@ -150,7 +150,7 @@ class StoredMailLinkingTests(unittest.TestCase):
     def test_shared_ats_domains_never_identify_a_company_or_role(self):
         message = normalize_stored_message(incoming(
             "acct-01/ats", "REQ-123: your interview is confirmed for 2026-08-04 10:30 AM PT.",
-            sender="notifications@greenhouse.io",
+            sender="greenhouse.io",
         ))
         link = link_message(message, APPS, DOMAINS)
         self.assertEqual(link["derivation"], "shared_ats_vendor")
