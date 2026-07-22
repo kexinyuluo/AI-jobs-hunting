@@ -34,11 +34,17 @@ retrieved facts. Enforce this:
   (what they say) → **Evidence** (what's observable) → **Judgment** (your call).
 - **Form a synthesis / POV.** End deep-dive sections with a short **My read** —
   what's genuinely impressive, what's marketing, what's the risk. Be specific.
+- **Explain before analyzing.** Assume the reader has never heard of the company,
+  used the product, or learned its domain vocabulary. State in plain language what
+  the product is, who uses it, and what job it performs before naming components,
+  architecture, strategy, or implementation details.
 - **Go past the homepage.** Read engineering blog posts *in full*, docs
   architecture pages, conference talks, founder interviews/podcasts, GitHub
   issues/design docs, and HN/Reddit threads. Cite the specific artifact.
 - **Be concrete.** Name the subsystem, the repo, the blog post, the customer, the
-  competitor. Generic statements ("scalable, reliable infra") are banned.
+  competitor. Show at least one realistic end-to-end use case with actors, inputs,
+  steps, and outputs; a product-name inventory is not an explanation. Generic
+  statements ("scalable, reliable infra") are banned.
 
 If a section could have been written without reading anything specific to this
 company, it is not done yet.
@@ -172,9 +178,18 @@ Rules:
 **for-interview/**
 - **01 company-overview** — one-liner, founding, HQ/remote, stage, headcount, the
   company *thesis* (the bet they're making about the world) — with confidence tags.
-- **02 product-and-technology** — product portfolio, **how it actually works**
-  (architecture / data flow, not a feature list), the real tech stack (JD + docs +
-  GitHub), OSS footprint, what's technically notable.
+- **02 product-and-technology** — a **cold-reader product walkthrough**, not a
+  component inventory. Assume zero prior company/product/domain knowledge. Start
+  with a jargon-free 30-second answer: product category, user, problem, and outcome.
+  Define prerequisite concepts and company terms in dependency order. Then show at
+  least one concrete end-to-end scenario—what the user does, a realistic input or
+  request, which components act in what order, and the visible output. Explicitly
+  separate what the customer runs/owns from what the company hosts/owns, and say
+  what the product does *not* replace. Map each major component to the persona and
+  workflow that use it. Only after that foundation, cover architecture/data flow,
+  the real tech stack (JD + docs + GitHub), OSS footprint, and what's technically
+  notable. Label hypothetical teaching examples `[illustrative]` so they cannot be
+  mistaken for sourced customer implementations.
 - **03 technical-challenges-deep-dive** — the centerpiece. See template below.
   **3–6 deep dives**, each on a genuinely hard problem at their scale.
 - **04 business-customers-competitors** — who pays and why, named customers, market
@@ -330,7 +345,8 @@ Keep comp/WLB/visa probes out of this file (those are `for-myself`).
   confidence legend note. End every file with `## Sources` (URLs + the specific
   artifact, e.g. a blog post title, not just the domain).
 - Deep-dive and differentiation files can run long — depth over brevity there.
-  Overview/role/for-myself files stay scannable (bullets, short sections).
+  `02` can run long enough to teach the product from zero. Overview/role/for-myself
+  files stay scannable (bullets, short sections).
 - Confidence/inference tags go on the specific claim, not the whole file.
 - README index: 4–6 bullet TL;DR ("the pitch + the bet, in your words"), file map,
   research date, master source list.
@@ -342,7 +358,8 @@ Keep comp/WLB/visa probes out of this file (those are `for-myself`).
 - [ ] First-party pass: site (about/careers/blog/pricing/docs), GitHub, ATS teams/roles
 - [ ] DEPTH pass: read eng blog posts/talks/founder interviews/HN in full (cite artifacts)
 - [ ] Secondary pass: funding/valuation, headcount, ratings, visa (cite + date)
-- [ ] Write 02 product/tech, then 03 technical-challenges-deep-dive (3–6 dives + My read)
+- [ ] Write 02 as a cold-reader product walkthrough with a concrete end-to-end example,
+      then 03 technical-challenges-deep-dive (3–6 dives + My read)
 - [ ] Write 05 moat & differentiation: contrarian bet + moat (5-Whys + evidence) +
       defensibility scorecard + growth potential + risks + My read
 - [ ] Write 01, 04, 06, 07, 08 (facts + POV + confidence tags + Sources)
@@ -357,6 +374,10 @@ Keep comp/WLB/visa probes out of this file (those are `for-myself`).
 - **Depth:** Does every `for-interview` file contain something you could only write
   after reading company-specific material? Does `03` explain *why each problem is
   hard*, and `05` explain *why the path is unique* — each with a **My read** POV?
+- **Cold-reader test:** Can someone with zero company, product, and domain knowledge
+  explain what the product does, who uses it, what one real workflow looks like, and
+  what the company versus customer operates after reading `02`? If they only know
+  component names and architecture labels, `02` is not done.
 - **Moat rigor:** In `05`, is each moat claim tested with a **5-Whys chain that ends
   in evidence** (not a restated company claim)? Is there a **defensibility verdict**
   per competitor/threat and an **evidence-based growth-potential** read? Are
