@@ -70,3 +70,17 @@
   broken reference (`AGENTS.md -> skills/coding-interview/`) because the
   private overlay is not mounted in this worktree; unrelated to this change
   and untouched by it.
+
+## 2026-07-22 — session 2 (claude, canary gate + fixes)
+
+- Rebased onto `email/stage-1-provider-contract` (skill-rename merge landed
+  via git rename detection; one roadmap conflict hand-merged); scrubbed an
+  absolute home path from verification.md that the armed leak guard caught.
+- Ran the full application-tracker canary set at head (5/5 PASS —
+  `evals/results/application-tracker-efcde9a-20260722.md`). The gate
+  found and this session fixed: the metadata-editor block-mapping
+  end-mark overshoot (44d26fa + 3 regression tests + known-issue record)
+  and the stale LESSONS v4 wording (e2ebe38).
+- Full battery re-verified on the combined branch: shared 285, publish 30,
+  tracker 42, email-assistant 24, job-search 210, resume-writer 86,
+  example render, reconcile, verify-links, armed leak guard — all green.
