@@ -126,6 +126,29 @@ def _line_insertion_index(text: str, node_end: int) -> int:
     return len(text) if newline < 0 else newline + 1
 
 
+def _reliable_end_index(node: Node) -> int:
+    """End index of ``node``'s own content, safe for edit planning.
+
+    PyYAML's end mark for a BLOCK collection points at the token that follows
+    the collection — which may be the next sibling record's line or EOF past
+    the trailing newline — so using it as an edit boundary bleeds into text
+    that does not belong to the node. Scalars and FLOW collections carry exact
+    end marks; for block collections, recurse to the deepest reliable child.
+    """
+    if isinstance(node, ScalarNode) or getattr(node, "flow_style", False):
+        return node.end_mark.index
+    end = node.start_mark.index
+    if isinstance(node, MappingNode):
+        children = [child for pair in node.value for child in pair]
+    elif isinstance(node, SequenceNode):
+        children = list(node.value)
+    else:
+        children = []
+    for child in children:
+        end = max(end, _reliable_end_index(child))
+    return end
+
+
 def _line_suffix(text: str, node_end: int) -> str:
     newline = text.find("\n", node_end)
     if newline < 0:
@@ -427,16 +450,17 @@ def plan_metadata_edit(
                     ],
                 )
             parent_indent = key_node.start_mark.column
+            value_end = _reliable_end_index(value_node)
             replacement = _dump_replacement_value(
                 generated[field],
                 parent_indent=parent_indent,
                 newline=newline,
-                suffix=_line_suffix(text, value_node.end_mark.index),
+                suffix=_line_suffix(text, value_end),
             )
             edits.append(
                 _Edit(
                     value_node.start_mark.index,
-                    value_node.end_mark.index,
+                    value_end,
                     replacement,
                 )
             )
@@ -451,9 +475,8 @@ def plan_metadata_edit(
                         "insertions; manual migration is required"
                     ],
                 )
-            last_value_node = record_node.value[-1][1]
             insertion_index = _line_insertion_index(
-                text, last_value_node.end_mark.index
+                text, _reliable_end_index(record_node)
             )
             indent = record_node.value[0][0].start_mark.column
             at_eof_without_newline = (
@@ -631,18 +654,20 @@ def plan_field_updates(
                     )
                 elif isinstance(value_node, MappingNode) and isinstance(value, dict):
                     # Tool-owned nested block (e.g. jobs[].progress): rewrite the
-                    # whole `key: block` region from the key onward.
+                    # whole `key: block` region from the key onward. Clamp the
+                    # region to the block's own content — its end mark overshoots.
+                    value_end = _reliable_end_index(value_node)
                     rendered = _dump_replacement_value(
                         value,
                         parent_indent=parent_indent,
                         newline=newline,
-                        suffix=suffix,
+                        suffix=_line_suffix(text, value_end),
                     )
                     joiner = "" if rendered.startswith(newline) else " "
                     edits.append(
                         _Edit(
                             key_node.start_mark.index,
-                            value_node.end_mark.index,
+                            value_end,
                             f"{key_node.value}:{joiner}{rendered}",
                         )
                     )
@@ -660,8 +685,9 @@ def plan_field_updates(
                     f"{_path_text(path)} cannot accept block-style field "
                     "insertions; manual migration is required")
                 continue
-            last_value_node = record_node.value[-1][1]
-            insertion_index = _line_insertion_index(text, last_value_node.end_mark.index)
+            insertion_index = _line_insertion_index(
+                text, _reliable_end_index(record_node)
+            )
             indent = record_node.value[0][0].start_mark.column
             at_eof_without_newline = (
                 insertion_index == len(text) and not text.endswith(("\n", "\r"))
@@ -825,8 +851,9 @@ def plan_v4_to_v5_migration(raw: bytes) -> MetadataEditPlan:
                 f"{_path_text(path)} cannot accept a block-style progress "
                 "insertion; manual migration is required")
             continue
-        last_value_node = record_node.value[-1][1]
-        insertion_index = _line_insertion_index(text, last_value_node.end_mark.index)
+        insertion_index = _line_insertion_index(
+            text, _reliable_end_index(record_node)
+        )
         indent = record_node.value[0][0].start_mark.column
         at_eof_without_newline = (
             insertion_index == len(text) and not text.endswith(("\n", "\r"))

@@ -470,5 +470,130 @@ class MigrationV4ToV5Tests(unittest.TestCase):
         self.assertEqual(plan.output_bytes, raw)
 
 
+class BlockMappingBoundaryTests(unittest.TestCase):
+    """Regressions for PyYAML block-collection end-mark overshoot.
+
+    A block mapping's end mark points at the token AFTER the mapping (the
+    next sibling record's line, or past the trailing newline at EOF), so
+    edits planned from it bled outside the node. Found by the
+    application-tracker canaries on 2026-07-22
+    (memory/known-issues/metadata-editor-block-mapping-field-insertion.md).
+    """
+
+    @staticmethod
+    def _progress_last_bytes() -> bytes:
+        """One posting whose mapping ENDS with the block progress (no
+        status_date) — the exact shape migrate_to_v5.py produces for a
+        never-transitioned job, and the shipped example fixture's shape."""
+        return (
+            b"job_metadata_schema_version: 5\n"
+            b"company: Acme\n"
+            b"jobs:\n"
+            b"  - role: Senior Engineer\n"
+            b"    jd_file: JD-senior-engineer.md\n"
+            b"    status: drafted\n"
+            b"    workplace: remote\n"
+            b"    sponsorship: unknown\n"
+            b"    job_level: {normalized: senior, min: 5.0, max: 5.8, confidence: low, source: title}\n"
+            b"    required_yoe: {min: 5, max: null, confidence: high, source: job_description}\n"
+            b"    salary_range: null\n"
+            b"    progress:\n"
+            b"      phase: application_prep\n"
+            b"      state: action_required\n"
+        )
+
+    @staticmethod
+    def _two_entry_block_facts_bytes(version: int, with_progress: bool) -> bytes:
+        """Two postings whose fact mappings are BLOCK style; entry 1 ends
+        with a block mapping, so a mis-clamped insertion lands in entry 2."""
+        progress = (
+            b"    progress:\n"
+            b"      phase: application_review\n"
+            b"      state: waiting_employer\n"
+        ) if with_progress else b""
+        entry = (
+            b"  - role: %s\n"
+            b"    jd_file: %s\n"
+            b"    status: applied\n"
+            + progress +
+            b"    workplace: remote\n"
+            b"    sponsorship: unknown\n"
+            b"    job_level:\n"
+            b"      normalized: mid\n"
+            b"      min: 4.0\n"
+            b"      max: 4.8\n"
+            b"      confidence: medium\n"
+            b"      source: title\n"
+            b"    required_yoe:\n"
+            b"      min: 3\n"
+            b"      max: 6\n"
+            b"      confidence: high\n"
+            b"      source: job_description\n"
+            b"    salary_range:\n"
+            b"      min: 140000\n"
+            b"      max: 175000\n"
+            b"      confidence: high\n"
+            b"      source: job_description\n"
+        )
+        return (
+            b"job_metadata_schema_version: %d\n" % version
+            + b"company: Acme\n"
+            + b"jobs:\n"
+            + entry % (b"Backend Engineer", b"JD-backend.md")
+            + entry % (b"Frontend Engineer", b"JD-frontend.md")
+        )
+
+    def test_transition_when_progress_block_is_the_last_field(self):
+        raw = self._progress_last_bytes()
+        plan = plan_field_updates(
+            raw, {("jobs", 0): {"status": "applied", "status_date": "2026-07-22",
+                                "progress": {"phase": "application_review",
+                                             "state": "waiting_employer"}}})
+        self.assertFalse(plan.errors)
+        self.assertTrue(plan.changed)
+        result = yaml.safe_load(plan.output_bytes)
+        self.assertEqual(result["jobs"][0]["status"], "applied")
+        self.assertEqual(result["jobs"][0]["status_date"], "2026-07-22")
+        self.assertEqual(result["jobs"][0]["progress"],
+                         {"phase": "application_review",
+                          "state": "waiting_employer"})
+        # The inserted line is a proper sibling field, not glued to the
+        # rewritten progress block's last line.
+        self.assertIn(b"\n    status_date: '2026-07-22'\n", plan.output_bytes)
+
+    def test_insertion_stays_inside_a_block_style_entry(self):
+        raw = self._two_entry_block_facts_bytes(5, with_progress=True)
+        plan = plan_field_updates(
+            raw, {("jobs", 0): {"status": "in_progress",
+                                "status_date": "2026-07-22",
+                                "progress": {"phase": "interview_loop",
+                                             "state": "unknown",
+                                             "label": "Onsite interview"}}})
+        self.assertFalse(plan.errors)
+        result = yaml.safe_load(plan.output_bytes)
+        self.assertEqual(result["jobs"][0]["status"], "in_progress")
+        self.assertEqual(result["jobs"][0]["status_date"], "2026-07-22")
+        # Entry 2 is untouched — semantically and byte-for-byte.
+        self.assertEqual(result["jobs"][1]["status"], "applied")
+        self.assertNotIn("status_date", result["jobs"][1])
+        original_entry_2 = raw.split(b"  - role: Frontend Engineer", 1)[1]
+        new_entry_2 = plan.output_bytes.split(b"  - role: Frontend Engineer", 1)[1]
+        self.assertEqual(new_entry_2, original_entry_2)
+
+    def test_migration_appends_progress_inside_block_style_entries(self):
+        raw = self._two_entry_block_facts_bytes(4, with_progress=False)
+        plan = plan_v4_to_v5_migration(raw)
+        self.assertFalse(plan.errors)
+        result = yaml.safe_load(plan.output_bytes)
+        self.assertEqual(result["job_metadata_schema_version"], 5)
+        for job in result["jobs"]:
+            self.assertEqual(job["progress"],
+                             {"phase": "application_review",
+                              "state": "waiting_employer"})
+        # Each progress block belongs to its own entry: entry 2 still starts
+        # with its role line directly after entry 1's appended progress.
+        self.assertIn(b"  - role: Frontend Engineer\n", plan.output_bytes)
+
+
 if __name__ == "__main__":
     unittest.main()
