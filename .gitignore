@@ -34,9 +34,11 @@ private/leak_tokens.txt
 # Private products (present only if you work in-place with your own data).
 # Anchored to the repo root so they never match the tracked examples/ dataset
 # (e.g. examples/applications/**, examples/templates/reference.example.docx).
+# NOTE: the former /templates/ in-place rule was retired 2026-07-22 — root
+# templates/ is now the TRACKED process-file schema folder; in-place resume
+# reference DOCX belongs under private/ (see handbook/private-overlay.md).
 /applications/
 /interviews/
-/templates/
 /.agents/inputs/
 /skills/coding-interview/
 # Generated dated discovery reports under the EXAMPLE config (test/canary runs
