@@ -18,23 +18,6 @@ decided.
 
 ## File format
 
-```markdown
-# <Title>
-
-- **Status**: decided | superseded
-- **Date**: YYYY-MM-DD
-- **Decided by**: owner | agent (within standing policy)
-- **Supersedes / Superseded-by**: link, if any
-
-## Context
-The problem and constraints, self-contained.
-
-## Decision
-What was chosen, stated plainly.
-
-## Alternatives considered
-Each with the one-line reason it lost.
-
-## Consequences
-What this commits us to; what would trigger revisiting.
-```
+Copy `templates/memory/decision.md` and fill the blanks — the template is
+the single source of truth for this schema (validated by
+`automation/reconcile/reconcile.py`).

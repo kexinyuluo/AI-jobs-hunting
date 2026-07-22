@@ -15,6 +15,7 @@ folder. Active design programs live in `design/`, not here.
 | `handbook/skills-and-vendoring.md` | Skill directory layout + how code is shared across self-contained skills |
 | `handbook/file-organization.md` | Purpose-named folders, tree-first file placement, scratch/tmp rules |
 | `handbook/subagent-budget.md` | The repo-wide subagent cap |
+| `handbook/collaboration-modes.md` | The human dial: `autonomous` / `async` / `pair`, and what "expensive to reverse" means |
 | `handbook/application-folders.md` | The full application-folder convention: statuses, files, splits |
 | `handbook/tailoring-guardrails.md` | Extended tailoring guardrails: traceability, keywords, skill lists |
 | `handbook/architecture.md` | Human-facing design doc: render pipeline, config, vendoring, CI gates |

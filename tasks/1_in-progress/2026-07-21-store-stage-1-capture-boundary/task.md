@@ -1,6 +1,6 @@
 # Store stage 1 — capture at the jobs fetch boundary (write-only)
 
-- **Note**: shipped in PR #50; only the multi-day measurement remains before review
+- **Claimed-by**: prior sessions (shipped in PR #50; only the multi-day measurement remains before review)
 - **Priority**: P1 (this round)
 - **Area**: harness
 - **Source**: raw-data-layer sign-off 2026-07-21; plan: design/raw-data-layer/execution-plan.md

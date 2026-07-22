@@ -64,6 +64,10 @@ support folders, not applications.
 | `message-queue/` | Async human↔agent messages, one file each, routed by who acts next (contract: `AGENTS.md` → Async Collaboration; map: `message-queue/README.md`): `needs-human/` `decisions/`, `clarifications/`, `reviews/`; `needs-agent/` `requests/`, `retries/`. Private mirror: `private/message-queue/` |
 | `tasks/` | Work items, one folder per task (`YYYY-MM-DD-<slug>`); the status folder it sits in IS its status (`0_backlog`…`4_done`). Map: `tasks/README.md` |
 | `memory/` | Long-term project memory: `decisions/` (append-only ADR log; open questions live in `message-queue/needs-human/decisions/` until decided), `known-issues/` (canonical detailed bug records — GitHub issues link here), `facts/`, `lessons/` |
+| `templates/` | Single source of truth for every process-file schema — queue items, tasks, memory entries, handovers (`templates/README.md`) |
+| `roadmap/` | `desired-state.md` vs `current-state.md`; the gap is the backlog's source (`roadmap/README.md`) |
+| `history/` | One folder per working session under `conversations/`, each with a `handover.md` (`history/README.md`) |
+| `automation/reconcile/reconcile.py` | The reconciler — mechanical referee for process-layer schemas, the memory index, handovers, and roadmap freshness; runs in pre-commit + CI; `--file-retries` queues findings, `--fix-index` regenerates `memory/index.md` |
 | `design/` | Active design programs (multi-approach explorations, execution plans), one folder per topic; folder-local contract in `design/AGENTS.md` |
 | `handbook/` | This folder — the extended reference behind `AGENTS.md` (`handbook/README.md` is the index) |
 | `README.md` | Human-facing quickstart (capability-first: example output, then the workflow) |

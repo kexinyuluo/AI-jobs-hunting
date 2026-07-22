@@ -14,6 +14,11 @@ identity/products. This is the core contract every agent reads BEFORE acting; ex
 full command cookbook, complete directory table, long rationale, edge-case policies, setup — lives
 in `handbook/` (index: `handbook/README.md`); read the named doc when a section points you there.
 
+**Collaboration mode:** `async` — decide everything reversible; file expensive-to-reverse choices
+in `message-queue/needs-human/decisions/` with a default path and continue; stop only on
+`Blocking: yes`. See `handbook/collaboration-modes.md`; a task file may override the mode for
+that task only.
+
 ## Public vs Private (skills + products)
 
 Two layered repos so timeless tooling can be published while anything tied to a real person
@@ -70,7 +75,10 @@ Full directory table (every script + per-skill row): `handbook/repo-map.md`.
 | `skills/job-search/companies.yaml` | Canonical **public** registry (company identity, ATS config, tags); candidate blacklist rows live in git-ignored `private/job-search/blacklist.yaml` |
 | `config.applications_root()` / `config.discoveries_dir()` | All applications in numbered status folders `0_profile`…`6_drafted` (the folder is the derived overall status) / ad-hoc job-search research |
 | `skills/` | Canonical skills dir (PUBLIC skills — see Public vs Private; private `coding-interview` via symlink) |
-| `automation/shared/`, `automation/vendoring/`, `automation/maintenance/`, `automation/metrics/`, `automation/publish/` | Canonical toolkit modules; vendoring; maintenance/gardener; budget metrics; publish/leak-guard |
+| `automation/` (shared, vendoring, maintenance, metrics, publish, store, reconcile, hooks) | Everything that runs: canonical toolkit modules, vendoring, gardener, metrics, leak guard, store tools, the reconciler, tracked git hooks |
+| `templates/` | **Single source of truth for every process-file schema** — copy one to create any queue/task/memory item (`templates/README.md`) |
+| `roadmap/` | `desired-state.md` vs `current-state.md` — the gap between them is the backlog's source |
+| `history/` | One folder per working session, each with a `handover.md` |
 | `tmp/` | Gitignored scratch (purpose-named subfolders); never committed |
 | `message-queue/` (`needs-human/`: `decisions/`, `clarifications/`, `reviews/`; `needs-agent/`: `requests/`, `retries/`) | Async human↔agent messages, one file each, routed by **who acts next** (see Async Collaboration) |
 | `tasks/` (status folders `0_backlog`…`4_done`) | Work items; the folder a task sits in IS its status (`tasks/README.md`) |
@@ -88,8 +96,11 @@ Full directory table (every script + per-skill row): `handbook/repo-map.md`.
    `behavioral-interview-prep`, `company-research` (company/role research + question bank),
    `outlook-email-assistant` (read personal Outlook mail, create repository-grounded reply drafts).
    Private `coding-interview` is at `skills/coding-interview/` when the overlay is mounted.
-3. Read `.agents/MEMORY.md` (if present) for cross-session context.
-4. Before tailoring, read the tailoring card (`<applications_root>/0_profile/tailoring-card.md`) — the distilled default context; open the full profile (`config.profile_md_path()`, source of truth) only on the resume-writer skill's escalation triggers (card missing/stale/`--check` fail, or a JD domain the card doesn't cover).
+3. Read `.agents/MEMORY.md` (if present) for cross-session context, and skim `memory/index.md`
+   (generated) — open only the entries relevant to your task.
+4. If your work changes overall architecture, read `roadmap/current-state.md` and
+   `roadmap/desired-state.md` — a new task should trace to a desired-state line.
+5. Before tailoring, read the tailoring card (`<applications_root>/0_profile/tailoring-card.md`) — the distilled default context; open the full profile (`config.profile_md_path()`, source of truth) only on the resume-writer skill's escalation triggers (card missing/stale/`--check` fail, or a JD domain the card doesn't cover).
 
 ## Async Collaboration (message-queue/ + tasks/ + doc dialogue)
 
@@ -129,6 +140,11 @@ chat is the owner's only push channel. Before opening a PR whose work relied on 
 decision's default path, re-check that decision file. Never name or summarize
 `private/message-queue/` or `private/tasks/` items in public PR descriptions or commit messages.
 
+**End of session** (any session that did real work): write
+`history/conversations/<YYYY-MM-DD>-<slug>/handover.md` from `templates/handover.md` (one screen,
+for a human who was away), update the task's `worklog.md`, and file any pending questions into
+`message-queue/` — the reconciler's `handover-present` check backstops this.
+
 **Doc dialogue:** human-read documents carry two-way fields — decision blocks with
 `**Your answer:**` lines, "Decisions (resolved)" tables (the owner may amend those too — check
 them on any visit), and a trailing `## Human questions / additional tasks` section (contract:
@@ -156,6 +172,8 @@ reactive — second folder-local correction or explicit owner ask; propose via
 
 Router:
 - Working under `design/`? Read `design/AGENTS.md` first (skip if your tool already injected it).
+- Creating any queue item, task file, memory entry, or handover? Copy its schema from
+  `templates/` (`templates/README.md`) — never write a format from memory.
 
 ## Guardrails (hard behavioral invariants)
 
@@ -184,6 +202,10 @@ Router:
 - **Profile is user-owned**: ask before modifying the candidate profile (`config.profile_md_path()`).
 - **Doc ownership**: `README.md` is human-facing (no agent instructions); `AGENTS.md` is agent-facing
   (no human usage guides).
+- **The reconciler is a gate**: `automation/reconcile/reconcile.py --check` (process-layer
+  schemas, memory index, handovers, roadmap freshness) runs in pre-commit + CI and must pass —
+  fix the finding or let `--file-retries` queue it; never weaken a check to make a commit pass,
+  never bypass with `--no-verify`.
 - **Risk-based eval gate on harness edits**: for any change to a skill's
   `SKILL.md`/`LESSONS.md`/`reference.md`, the editing agent decides whether to run that skill's
   canaries (`evals/<skill>/canaries.yaml`) by judging the edit's **intention and size** —
@@ -229,9 +251,9 @@ Each expands in a named `handbook/` doc; the bolded name is the canonical sectio
   waves; reuse/resume or finish in the parent — never a ninth. Repo-wide cap (`handbook/subagent-budget.md`).
 - **Process Folders** — `message-queue/` + `tasks/` (see **Async Collaboration** above) plus the
   memory zones `memory/decisions/` and `memory/known-issues/` (+ same-name `private/` mirrors for
-  leak-guarded content): one self-contained item per file, formats in each folder's README. Hit an
-  owner-owned fork? File it in `message-queue/needs-human/decisions/` (with options + a default
-  path) and continue — don't block, don't guess.
+  leak-guarded content): one self-contained item per file, schemas in `templates/` (copy, never
+  restate). Hit an owner-owned fork? File it in `message-queue/needs-human/decisions/` (with
+  options + a default path) and continue — don't block, don't guess.
 - **Shell & Paths** — the shell is **zsh**; always use **absolute paths** in bash calls (a subagent's
   working directory resets between calls, so relative paths break), and **quote** any `=`-leading
   argument or glob (`'--flag=val'`, `'*.md'`) so zsh does not mis-split or expand it.

@@ -20,8 +20,9 @@ message:
      ``references_private/`` folder — candidate-specific skill content.
   4. Path/filename denylist (defense in depth). Any tracked path under a private
      product tree (``applications/``, ``interviews/``, ``.agents/inputs/``, the
-     private ``coding-interview`` skill), any non-example file under
-     ``templates/``, any ``meta.yaml`` outside ``examples/``, or any ``.docx`` /
+     private ``coding-interview`` skill), any non-markdown, non-example file under
+     ``templates/`` (root templates/ = tracked process schemas), any
+     ``meta.yaml`` outside ``examples/``, or any ``.docx`` /
      ``.pdf`` outside ``examples/``. This catches private trees even when zero
      identity tokens are active.
   5. Structural PII (independent of the token list). Raw emails, US phone shapes,
@@ -122,7 +123,7 @@ _DENY_TREES = [
     (re.compile(r"^applications/"), "applications/"),
     (re.compile(r"^interviews/"), "interviews/"),
     (re.compile(r"^\.agents/inputs/"), ".agents/inputs/"),
-    (re.compile(r"^\skills/coding-interview/"), "skills/coding-interview/"),
+    (re.compile(r"^skills/coding-interview/"), "skills/coding-interview/"),
 ]
 
 
@@ -140,12 +141,13 @@ def find_path_denylist_violations(tracked: list[str]) -> list[dict]:
                 reason = f"private-tree:{label}"
                 break
         if reason is None and rel.startswith("templates/"):
-            # ``templates/`` is terminal: it ships nothing but example-named
-            # assets (mirrors the exporter, which copies example templates only
-            # under examples/). An example-named template is fully allowed here —
-            # do NOT fall through to the stray-binary check below.
-            if ".example." not in Path(rel).name:
-                reason = "templates-nonexample"
+            # Root ``templates/`` holds the tracked process-file SCHEMAS
+            # (markdown only; retired the pre-2026-07-22 in-place products
+            # meaning). Markdown ships; anything else here — above all a
+            # resume/reference document binary — is a leak candidate. An
+            # example-named asset stays allowed for continuity.
+            if Path(rel).suffix.lower() != ".md" and ".example." not in Path(rel).name:
+                reason = "templates-nonschema"
         elif reason is None:
             name = Path(rel).name
             suffix = Path(rel).suffix.lower()

@@ -67,4 +67,7 @@ echo "pre-commit: byte-compiling automation + self-contained skills..."
 echo "pre-commit: instruction-file budget (strict)..."
 "$PY" automation/metrics/instruction_budget.py --strict
 
+echo "pre-commit: reconciler (process-layer schemas)..."
+"$PY" automation/reconcile/reconcile.py --check
+
 echo "pre-commit: OK"

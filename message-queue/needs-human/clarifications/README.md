@@ -8,18 +8,6 @@ cheap to revert.
 
 ## File format
 
-```markdown
-# <The question, in plain words>
-
-- **Status**: awaiting-owner-input
-- **Blocking**: no (a clarification that becomes blocking is refiled as a decision)
-- **Assumption**: what agents will assume until answered
-- **Matters-by**: when a wrong assumption starts costing real rework
-- **Filed**: YYYY-MM-DD
-- **Source**: [where this came from](../../../path/to/source.md)
-
-## Background
-Enough context to answer cold, self-contained.
-
-**Your answer:** ______
-```
+Copy `templates/queue/clarification.md` and fill the blanks — the template
+is the single source of truth for this schema (validated by
+`automation/reconcile/reconcile.py`).

@@ -61,6 +61,11 @@ jobs:
       - name: Compile all Python
         run: python -m compileall automation skills/*/scripts
 
+      # 2b. Process-layer invariants: queue/task/memory schemas, memory index,
+      #     handovers, roadmap freshness (single source of truth: templates/).
+      - name: Reconciler (process-layer schemas)
+        run: python automation/reconcile/reconcile.py --check
+
       # 3. Render + validate the worked example using the fake "Jordan Rivers"
       #    config.example.yaml. render.py auto-runs check.py (locked fields, real
       #    titles/skills, bullet lengths, one-page PDF, cover-letter prose).
