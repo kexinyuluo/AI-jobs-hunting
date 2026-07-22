@@ -9,6 +9,7 @@ Implemented and live-tested the local Outlook store plus guarded application-pro
 
 - A full 30-day Inbox/Sent/Drafts corpus passed integrity, attachment-metadata-only, freshness, safety, vendoring, unit, and public leak checks.
 - Exact-message reconciliation and email provenance now integrate with schema-v5 progress/calendar state; live-discovered route, bounded-sync, reply-projection, and calendar-label bugs were fixed.
+- The owner resolved the company-level positive-signal policy; it is now recorded privately and the affected applied record was reconciled.
 
 ## Where things stand
 
@@ -17,4 +18,4 @@ Implemented and live-tested the local Outlook store plus guarded application-pro
 
 ## Needs your attention
 
-- A private mailbox review and a private ambiguity clarification are pending in the private message queue; defaults are fail-closed and non-blocking.
+- A private mailbox review remains pending; the ambiguity clarification was folded and removed from the queue.

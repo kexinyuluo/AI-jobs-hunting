@@ -36,3 +36,16 @@ review_complete: true; store_stale: false
 Five consecutive zero-mismatch store/live comparisons: not yet complete.
 Automatic store-first cutover: deliberately not performed.
 ```
+
+## Owner-confirmed ambiguity follow-up
+
+```
+$ .venv/bin/python skills/application-tracker/scripts/status.py --check-metadata
+Checked 215 applications; 0 invalid.
+
+$ .venv/bin/python skills/application-tracker/scripts/status.py --check-calendar
+Calendar consistent; 5 entries, 5 referenced.
+
+$ .venv/bin/python automation/reconcile/reconcile.py --check
+reconcile: OK (6 checks clean)
+```
