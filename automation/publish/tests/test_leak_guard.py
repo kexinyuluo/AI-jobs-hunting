@@ -146,6 +146,12 @@ class PathDenylistTests(unittest.TestCase):
         result = self._scan({"templates/resume/reference.docx": b"x"})
         self.assertFalse(result["ok"])
 
+    def test_templates_markdown_schema_passes_path_check(self):
+        # Root templates/ carries the tracked process-file schemas (markdown).
+        reasons = check_public.find_path_denylist_violations(
+            ["templates/queue/decision.md", "templates/README.md"])
+        self.assertEqual(reasons, [])
+
     def test_templates_example_named_passes_path_check(self):
         # A real (zip) example docx would pass; here we only assert the PATH check
         # does not flag an example-named template.
@@ -270,7 +276,7 @@ class ExporterEndToEndTests(unittest.TestCase):
                       if p.is_file() and ".git/" not in p.relative_to(dest).as_posix()]
 
             # No private product trees leaked into the manifest.
-            for bad in ("applications/", "interviews/", "templates/",
+            for bad in ("applications/", "interviews/",
                         ".agents/inputs/", "skills/coding-interview/"):
                 offenders = [c for c in copied if c.startswith(bad)]
                 self.assertEqual(offenders, [], f"{bad} leaked: {offenders}")
