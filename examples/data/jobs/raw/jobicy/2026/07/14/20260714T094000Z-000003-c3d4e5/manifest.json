@@ -1,0 +1,27 @@
+{
+  "context": {
+    "profile": "profile-01"
+  },
+  "envelope_schema": 1,
+  "fetch_id": "20260714T094000Z-000003-c3d4e5",
+  "fetched_at": "2026-07-14T09:40:00Z",
+  "item_count": 3,
+  "operation": "scrape",
+  "payload": {
+    "blob": "3c38b124d384844a50d0a507d95753361a0f4ad89eba84ebd0e2f5f663a67f65",
+    "bytes_raw": 807,
+    "content_type": "application/json"
+  },
+  "request": {
+    "params": {
+      "geo": "usa"
+    },
+    "url": "https://jobicy.com/api/v2/remote-jobs"
+  },
+  "response_headers": {
+    "content-type": "application/json"
+  },
+  "source": "jobicy",
+  "status": 200,
+  "tool_version": "capture-lib 1 / fixture-generator"
+}

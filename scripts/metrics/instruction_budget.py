@@ -22,6 +22,9 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+_SHARED = REPO_ROOT / "scripts" / "shared"
+if str(_SHARED) not in sys.path:
+    sys.path.insert(0, str(_SHARED))
 
 # Budgets. "Warn above" == the check flags the file; with
 # --strict it also exits non-zero. reference.md is measured for visibility but
@@ -30,11 +33,38 @@ BUDGETS = {
     "SKILL.md": 600,     # target <= 600 lines; warn above
     "LESSONS.md": 160,   # <= 160 lines (~one lesson-bullet block); warn above
     "AGENTS.md": 500,    # warn when > 500 lines
+    # The GENERATED store README (map + cookbook) is store-derived, so it is
+    # measured ONLY when the store is configured AND the file exists — never in
+    # CI (data_root unset). Budgeted in TOKENS (~one SKILL.md's worth) so the
+    # cold-read map an agent pays for can't quietly bloat.
+    "STORE_README": 700,
 }
+
+# Kinds whose budget is compared against estimated TOKENS, not line count.
+TOKEN_BUDGET_KINDS = {"STORE_README"}
 
 # Rough token estimate. English prose averages ~4 bytes/token; good enough for a
 # static bloat tripwire (token count is the budget unit).
 BYTES_PER_TOKEN = 4
+
+
+def _store_readme_target():
+    """Yield ``("STORE_README", path)`` when the store is configured and present.
+
+    Conditional by design: the generated README lives inside the private data root,
+    so CI (which leaves ``data_root`` unset) never measures it — only a machine with
+    a real store does.
+    """
+    try:
+        import config  # scripts/shared/config.py
+        root = config.data_root()
+    except Exception:  # noqa: BLE001
+        return
+    if root is None:
+        return
+    readme = Path(root) / "README.md"
+    if readme.is_file():
+        yield ("STORE_README", readme)
 
 
 def _iter_targets(root: Path):
@@ -54,6 +84,8 @@ def _iter_targets(root: Path):
         for name in ("SKILL.md", "LESSONS.md", "reference.md"):
             for path in sorted(skills.glob(f"*/{name}")):
                 yield (name, path)
+
+    yield from _store_readme_target()
 
 
 def _measure(path: Path):
@@ -78,11 +110,16 @@ def build_report(root: Path):
         except OSError:
             continue
         budget = BUDGETS.get(kind)
-        over = budget is not None and n_lines > budget
+        measure = est_tokens if kind in TOKEN_BUDGET_KINDS else n_lines
+        over = budget is not None and measure > budget
+        try:
+            display_path = path.relative_to(root).as_posix()
+        except ValueError:
+            display_path = str(path)
         rows.append(
             {
                 "kind": kind,
-                "path": path.relative_to(root).as_posix(),
+                "path": display_path,
                 "lines": n_lines,
                 "bytes": n_bytes,
                 "tokens": est_tokens,
@@ -144,7 +181,10 @@ def main(argv=None) -> int:
         print()
         print(f"{len(violations)} file(s) over budget:")
         for v in violations:
-            print(f"  ! {v['path']}: {v['lines']} lines > {v['budget']} budget")
+            if v["kind"] in TOKEN_BUDGET_KINDS:
+                print(f"  ! {v['path']}: {v['tokens']} tokens > {v['budget']} budget")
+            else:
+                print(f"  ! {v['path']}: {v['lines']} lines > {v['budget']} budget")
         if args.strict:
             print("\nFAIL (--strict): instruction-file budget exceeded.")
             return 1

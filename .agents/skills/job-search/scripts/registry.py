@@ -31,6 +31,12 @@ REGISTRY_PATH = SKILL_DIR / "companies.yaml"
 
 _WS_RE = re.compile(r"\s+")
 _BATCH_RE = re.compile(r"^[a-z0-9][a-z0-9._-]*$")
+_SLUGIFY_RE = re.compile(r"[^a-z0-9]+")
+
+
+def _slugify(value: str | None) -> str:
+    """Mechanically map a name to a neutral ``[a-z0-9-]`` slug (store context form)."""
+    return _SLUGIFY_RE.sub("-", str(value or "").lower()).strip("-")
 
 SUPPORTED_ATS = {
     "greenhouse", "ashby", "lever", "smartrecruiters", "workday",
@@ -85,6 +91,25 @@ def lint_entries(entries: list[dict]) -> list[str]:
         if not isinstance(aliases, list):
             errors.append(f"{name}: aliases must be a list")
             aliases = []
+
+        # Optional ATS-migration records: `previous: [{ats, token, until}]`. A
+        # declared record LICENSES continuation matching across that one boundary
+        # (store builder); without a record no cross-ATS merge ever happens.
+        previous = entry.get("previous")
+        if previous is not None:
+            if not isinstance(previous, list):
+                errors.append(f"{name}: previous must be a list of migration records")
+            else:
+                for rec in previous:
+                    if not isinstance(rec, dict):
+                        errors.append(f"{name}: each previous record must be a mapping")
+                        continue
+                    prev_ats = str(rec.get("ats") or "").strip().lower()
+                    if prev_ats not in SUPPORTED_ATS:
+                        errors.append(
+                            f"{name}: previous.ats {rec.get('ats')!r} unsupported")
+                    if not str(rec.get("token") or "").strip():
+                        errors.append(f"{name}: previous.token is required")
         batch = entry.get("poll_batch")
         if batch is not None and (
                 not isinstance(batch, str) or not _BATCH_RE.fullmatch(batch.strip())):
@@ -116,6 +141,7 @@ class Registry:
         self._key_to_canonical: dict[str, str] = {}
         self._canonical_to_keys: dict[str, set[str]] = {}
         self._blacklist: dict[str, str] = {}   # canonical name -> reason
+        self._slug_to_canonical: dict[str, str] = {}   # slugified key -> canonical
         self._build_index()
 
     def _entry_keys(self, entry: dict) -> set[str]:
@@ -144,6 +170,11 @@ class Registry:
                           file=sys.stderr)
                     continue
                 self._key_to_canonical[key] = canonical
+                # A store-neutral slug of every match key resolves the manifest's
+                # `context.company` slug back to the registry canonical name.
+                slug = _slugify(key)
+                if slug:
+                    self._slug_to_canonical.setdefault(slug, canonical)
             if entry.get("blacklist"):
                 reason = entry["blacklist"]
                 self._blacklist[canonical] = reason if isinstance(reason, str) else ""
@@ -164,6 +195,31 @@ class Registry:
             return set(self._canonical_to_keys.get(canonical, set()))
         norm = normalize(raw)
         return {norm} if norm else set()
+
+    def canonical_for_slug(self, slug: str | None) -> str | None:
+        """Reverse a store ``context.company`` slug to the registry canonical name.
+
+        The store captures ``context.company`` as ``slugify(registry_name)``; this
+        maps it back so the builder can namespace Workday keys and label entities
+        with the stable canonical company. Unknown slugs resolve to ``None``.
+        """
+        if not slug:
+            return None
+        return self._slug_to_canonical.get(str(slug).strip().lower())
+
+    def migration_records(self, raw: str | None) -> list[dict]:
+        """Declared ATS-migration records for a company (``previous:`` list).
+
+        Each record ``{ats, token, until}`` LICENSES the store builder to continue a
+        posting's identity across that one ATS boundary (same company + normalized
+        title + JD content hash). No record → the builder never merges across ATSes.
+        """
+        canonical = self.canonical(raw) or (raw or "")
+        for entry in self.entries:
+            if (entry.get("name") or "").strip() == canonical:
+                prev = entry.get("previous") or []
+                return [r for r in prev if isinstance(r, dict)]
+        return []
 
     def is_blacklisted(self, raw: str | None) -> tuple[bool, str | None]:
         """(True, reason) if `raw` resolves to a blacklisted company, else (False, None)."""

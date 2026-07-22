@@ -1,2 +1,5 @@
-{"_schema":1,"built_at":"2026-07-14T09:32:00Z","note":"machine-generated — do not cat into context; use query_postings.py"}
-{"at":"2026-07-14T09:30:00Z","key":"gh-1234567","type":"first_seen"}
+{"_schema":1,"built_at":"2026-07-16T09:30:00Z","note":"store-derived — machine-generated; do NOT cat into context or paste into any public surface. Use query_postings.py."}
+{"at":"2026-07-14T09:30:00Z","entity":"gh-1234567","fetch":"20260714T093000Z-000001-a1b2c3","seq":1,"type":"first_seen"}
+{"at":"2026-07-14T09:30:00Z","entity":"gh-7654321","fetch":"20260714T093000Z-000001-a1b2c3","seq":1,"type":"first_seen"}
+{"at":"2026-07-14T09:40:00Z","entity":"ck-53ef9a5b59d7","fetch":"20260714T094000Z-000003-c3d4e5","seq":2,"type":"first_seen"}
+{"at":"2026-07-14T09:40:00Z","entity":"url-b839730d7cbd","fetch":"20260714T094000Z-000003-c3d4e5","seq":2,"type":"first_seen"}
