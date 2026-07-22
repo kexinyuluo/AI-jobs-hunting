@@ -47,7 +47,30 @@ SCHEMA_FILES = {
     "key-registry": "key-registry.v1.json",
     "identifiers": "identifiers.v1.json",
     "cursors": "cursors.v1.json",
+    # Stage 2 — job-postings builder artifacts (derived + index + triage).
+    "posting": "posting.v1.json",
+    "posting-index-line": "posting-index-line.v1.json",
+    "event-line": "event-line.v1.json",
+    "suppressed": "suppressed-line.v1.json",
 }
+
+
+def _index_row_schema(idx_path: Path) -> str | None:
+    """The data-row schema for an index file, dispatched by its location.
+
+    ``index/postings.jsonl`` rows are posting summary lines; ``index/by-day/*`` and
+    per-entity ``events.jsonl`` rows are observed-event lines; ``index/triage/*``
+    rows are suppressed-review lines. Unknown index files validate their header only.
+    """
+    parts = idx_path.parts
+    name = idx_path.name
+    if "triage" in parts:
+        return "suppressed"
+    if "by-day" in parts:
+        return "event-line"
+    if name == "postings.jsonl":
+        return "posting-index-line"
+    return None
 
 
 @lru_cache(maxsize=None)
@@ -178,6 +201,24 @@ def _validate_yaml_file(path: Path, schema_name: str, report: StoreReport) -> No
     report.counts[schema_name] = report.counts.get(schema_name, 0) + 1
 
 
+def _validate_derived_postings(layout: DomainLayout, report: StoreReport) -> None:
+    """Validate derived posting entities: ``posting.yaml`` + ``events.jsonl`` rows."""
+    postings_root = layout.derived / "postings"
+    if not postings_root.is_dir():
+        return
+    for pyaml in sorted(postings_root.rglob("posting.yaml")):
+        data = serialization.loads_yaml(pyaml.read_text(encoding="utf-8"))
+        for err in validate(data, load_schema("posting"), pyaml.name):
+            report.errors.append(f"{pyaml}: {err}")
+        report.counts["posting"] = report.counts.get("posting", 0) + 1
+        events = pyaml.parent / "events.jsonl"
+        if events.exists():
+            for i, ev in enumerate(read_jsonl(events)):
+                for err in validate(ev, load_schema("event-line"), f"event[{i}]"):
+                    report.errors.append(f"{events}: {err}")
+            report.counts["event-line"] = report.counts.get("event-line", 0) + 1
+
+
 def _validate_domain(domain_root: Path, report: StoreReport) -> None:
     layout = DomainLayout(root=domain_root, domain=domain_root.name)
 
@@ -212,7 +253,10 @@ def _validate_domain(domain_root: Path, report: StoreReport) -> None:
                 report.errors.append(f"{ledger}: {err}")
         report.counts["ledger"] = report.counts.get("ledger", 0) + 1
 
-    # index headers
+    # derived posting entities (Stage 2) — entity YAML + event lines
+    _validate_derived_postings(layout, report)
+
+    # index headers + data rows (dispatched by location)
     if layout.index.is_dir():
         for idx in sorted(layout.index.rglob("*.jsonl")):
             lines = read_jsonl(idx)
@@ -222,6 +266,12 @@ def _validate_domain(domain_root: Path, report: StoreReport) -> None:
             for err in validate(lines[0], load_schema("index-header"), "header"):
                 report.errors.append(f"{idx}: {err}")
             report.counts["index-header"] = report.counts.get("index-header", 0) + 1
+            row_schema = _index_row_schema(idx)
+            if row_schema is not None:
+                for i, row in enumerate(lines[1:], start=1):
+                    for err in validate(row, load_schema(row_schema), f"row[{i}]"):
+                        report.errors.append(f"{idx}: {err}")
+                report.counts[row_schema] = report.counts.get(row_schema, 0) + len(lines) - 1
 
     # annotations
     if layout.annotations.is_dir():
