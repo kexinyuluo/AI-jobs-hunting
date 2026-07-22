@@ -23,12 +23,33 @@ canaries:
       - "Creates the full folder — for-interview/ 01-09 and for-myself/ 01-05, plus a README index with a TL;DR, research date, and a master source list."
       - "Actually produces 03 (technical-challenges-deep-dive, 3-6 dives), 05 (moat and differentiation), and 09 (question bank) — these three are the point of the skill."
       - "Clears the Depth Bar — every major fact answers 'so what?' / 'why is this hard?', names concrete subsystems/repos/blog-posts/competitors (not 'scalable, reliable infra'), and each deep-dive section ends with a 'My read' POV."
+      - "Writes 02 for a cold reader: a jargon-free product answer before component names, prerequisite concepts defined in order, at least one concrete end-to-end use case, and explicit company-hosted versus customer-owned boundaries."
       - "Does live research (fetches primary sources, cites the specific artifact) rather than writing from memory; marks non-first-party claims [confirmed]/[likely]/[unverified] and inferences [inference]."
       - "Keeps comp/WLB/visa OUT of the question bank — those live in for-myself/."
     failure_modes:
       - "Homepage-depth summary that could have been written without reading anything specific."
       - "Skips 03 / 05 / 09, or omits the for-myself/ files."
       - "Uncited claims, or facts written from memory with no source artifact."
+    primary_metric: rubric_pass
+    efficiency_metrics: [total_tokens, wall_clock_s, tool_calls]
+
+  - id: cr-product-cold-reader
+    requires_overlay: false
+    prompt: >
+      I've never heard of Cloudflare or used its products. Explain concretely what its product is,
+      who uses it, and how it is used in 02-product-and-technology.md. Assume I know none of the
+      company or domain vocabulary.
+    setup: "Default setup. Focuses on 02-product-and-technology.md. Live network research required."
+    expected_behavior:
+      - "Starts with a jargon-free 30-second answer covering product category, user, problem, and visible outcome before listing branded components or architecture."
+      - "Defines prerequisite domain concepts and company terms in dependency order instead of assuming the reader already knows them."
+      - "Shows at least one realistic end-to-end use case with concrete actors, input/request, ordered component behavior, and output; labels hypothetical teaching details [illustrative] rather than presenting them as customer facts."
+      - "Explicitly separates what Cloudflare hosts/operates from what the customer owns/runs, says what the product does not replace, and maps major components to the people and workflows that use them."
+      - "Only after the beginner explanation, covers company-specific architecture/technology with live primary sources and appropriate confidence tags."
+    failure_modes:
+      - "Starts with an unexplained inventory of acronyms, product names, planes, or internal components."
+      - "Describes features but never walks through what a person or system actually sends, what happens, and what comes back."
+      - "Leaves the reader unable to distinguish Cloudflare infrastructure from customer infrastructure, or presents an invented example as a confirmed customer implementation."
     primary_metric: rubric_pass
     efficiency_metrics: [total_tokens, wall_clock_s, tool_calls]
 
