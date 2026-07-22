@@ -9,6 +9,9 @@ or a prior session.
 ## Rules
 
 - Filename: `<kebab-slug>.md`.
+- Every item has a **Source** link to the design, result, task, or other
+  durable file that created the question. If the decision originated in
+  chat, link the closest durable record and say that chat supplied the fork.
 - **Public tree ⇒ leak-guard rules apply**; decisions about the owner's real
   pipeline/identity go in `private/todo/decisions/` (same format).
 - Every file states a **default path** — what agents will do (or deliberately
@@ -36,6 +39,7 @@ or a prior session.
 - **Status**: awaiting-owner-input | parked-until-revisit
 - **Revisit when**: (parked items only) the concrete condition that reopens this
 - **Filed**: YYYY-MM-DD
+- **Source**: [descriptive source](../../path/to/source.md)
 - **Blocking?**: what work (if any) is blocked until decided
 - **Default path**: what happens if this stays unanswered
 

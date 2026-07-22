@@ -1,15 +1,16 @@
 # 04 — download-emails: raw email capture, categorization, and pipeline linkage
 
-**Status:** ACCEPTED WITH ONE OPEN QUESTION (owner sign-off 2026-07-21).
+**Status:** accepted; implementation has not started. Owner sign-off was
+2026-07-21, and the final email git-policy question was resolved on
+2026-07-22.
 Folder scope, cutover criterion (now dual), unrelated-mail retention,
 at-rest posture, and attachments (metadata-only) are decided and folded in;
-the **email git policy is still open** — the owner asked a clarifying
-question, answered inline in
-[the open decision block](#q-e-email-git-policy-what-does-the-overlay-repo-track)
-and mirrored in `todo/decisions/email-git-policy.md`. Record:
+the email git policy tracks only content-free index headers and safe
+annotations. Record:
 [design-decisions/raw-data-layer-decisions.md](../../../design-decisions/raw-data-layer-decisions.md).
-Implementation not started (blocked on the open question only for the
-git-policy piece). Writing follows [docs/design/STYLE.md](../STYLE.md).
+The scheduling extension is in
+[the application-progress/calendar design](../application-progress-calendar/README.md).
+Writing follows [docs/design/STYLE.md](../STYLE.md).
 
 Builds on [the store core](01-store-core.md) and
 [the provider contract](03-provider-interfaces.md).
@@ -64,11 +65,9 @@ guard cannot screen ([Privacy](#6-privacy) states this honestly); genuinely
 fiddly sync machinery; the association logic needs its guard rails or it
 *creates* the wrong-status-change failure it exists to prevent.
 
-**Recommendation:** accepted with the guard rails below; build after the
-jobs store proves the pattern. Of the privacy decisions, at-rest and
-attachments are resolved; only the git policy
-([the open decision block](#q-e-email-git-policy-what-does-the-overlay-repo-track))
-remains, and it blocks only its own piece of the sync stage. With the provider contract's Gmail rules, a Gmail account
+**Recommendation:** accepted with the guard rails below. The jobs store
+has proved the pattern, every privacy decision is resolved, and the email
+track can proceed in focused stages. With the provider contract's Gmail rules, a Gmail account
 participates read-only from day one — full value for this skill, no
 send-capable token.
 
@@ -166,7 +165,11 @@ chain** — the only correlator that exists across providers.
 assessment, interview invite, scheduling, neutral status update, rejection,
 offer, inbound recruiter outreach, outbound cold outreach, follow-up
 needed, job-alert digest, background check/onboarding, unrelated, unknown —
-non-exclusive flags coexist alongside).
+non-exclusive flags coexist alongside). Scheduling carries structured
+subtypes for booking requested, availability/booking submitted, schedule
+confirmed, reschedule requested, replacement confirmed, and cancellation;
+their guarded tracker/calendar effects are defined in
+[the progress and calendar design](../application-progress-calendar/README.md#4-email-evidence-mapping).
 
 **Who classifies:** deterministic rules first, recorded as versioned
 machine opinions; AI only for what rules can't resolve — and per
@@ -251,6 +254,9 @@ about this application" — the question you'll ask under stress, right after
 a rejection lands — is one file read, not a grep across the whole message
 index. Application slugs join applications↔messages; posting store keys
 join messages↔postings.
+When scheduling reconciliation lands, `jobs[].progress.calendar_item`
+adds the role↔calendar link without duplicating exact times in
+`meta.yaml`.
 
 ## 4. Reply-state and queues
 
@@ -334,12 +340,11 @@ triage tables and query output; capture scope stays narrow.
 carry only content hashes/offsets plus a short paraphrase. (The first
 draft simultaneously required "quoted evidence in annotations" and
 promised "no bodies in tracked files" — a direct contradiction.)
-- **Git policy for email is stricter than for jobs** — the one decision
-still open;
-[the decision block](#q-e-email-git-policy-what-does-the-overlay-repo-track)
-now answers the owner's clarifying question with concrete examples. The
-review-flipped recommendation stands: subjects alone routinely carry
-third-party names, so even the derived zone should stay out of git.
+- **Git policy for email is stricter than for jobs.** The owner chose to
+track only content-free index headers and safe annotations. Raw, derived,
+message index rows, and the evidence sidecar stay out of git because even
+subjects routinely carry third-party names. See
+[the decision record](../../../design-decisions/email-git-policy.md).
 - **At-rest (decided 2026-07-21):** documented assumption — this runs on
 private machines and **the user is responsible for protecting the raw
 data**; no encryption tooling is built. (The owner asked what encryption
@@ -401,7 +406,7 @@ one of the trial. Cutover is your call on that evidence.
 | No staleness detection: a wedged sync silently reports "nothing new" while an interview invite ages in the real inbox. (adversarial-email; major)                                                                                                                 | The staleness tripwire + gardener checks — [Sync design](#1a-the-staleness-tripwire).                                                                                                                                  |
 | Mutable sync state under `raw/` would be garbage-collected by the store's cleanup sweep. (adversarial-email; major)                                                                                                                                               | Sync state lives in the `state/` zone — [Sync design](#1-sync-design).                                                                                                                                                 |
 | Deletion semantics were unspecified: archived/deleted messages would haunt queues forever, especially across full resyncs. (adversarial-email; major)                                                                                                             | Explicit move/delete semantics + resync inventory diff — [Sync design](#1-sync-design).                                                                                                                                |
-| Tracked annotations required quoted evidence while the privacy section promised no bodies in tracked files — a direct contradiction; and tracking derived subjects pushed third-party PII into git history. (adversarial-email + human-ergonomics/privacy; major) | Evidence sidecar (git-ignored); git-policy recommendation flipped — [Privacy](#6-privacy), [Q-E](#q-e-email-git-policy-what-does-the-overlay-repo-track).                                                              |
+| Tracked annotations required quoted evidence while the privacy section promised no bodies in tracked files — a direct contradiction; and tracking derived subjects pushed third-party PII into git history. (adversarial-email + human-ergonomics/privacy; major) | Evidence sidecar (git-ignored); git-policy recommendation flipped — [Privacy](#6-privacy) and [the decision record](../../../design-decisions/email-git-policy.md).                                                |
 | The side-by-side trial compared incomparable windows — noise would bury real failures. (adversarial-email; minor)                                                                                                                                                 | Intersection-based comparison with an explicit pass criterion — [Cutover](#7-cutover-proving-the-store-before-trusting-it).                                                                                            |
 | Third-party PII unacknowledged; attachments policy missing; no at-rest consideration; no command to read a stored body. (human-ergonomics/privacy; major/minor)                                                                                                   | [Privacy](#6-privacy) first bullet; attachment-metadata rule in [Sync design](#1-sync-design); the at-rest assumption in [Privacy](#6-privacy); the explicit read-stored command.                                                                   |
 | No reverse path from an application to its messages — the highest-stress investigation required a full-index grep. (human-ergonomics; major)                                                                                                                      | The by-application reverse index — [Cross-store join](#3b-the-cross-store-join).                                                                                                                                       |
@@ -409,13 +414,12 @@ one of the trial. Cutover is your call on that evidence.
 
 
 
-## 10. Decisions — five resolved, one open
+## 10. Decisions — all resolved
 
-Five of six decisions were answered by the owner on 2026-07-21;
-authoritative record:
-[design-decisions/raw-data-layer-decisions.md](../../../design-decisions/raw-data-layer-decisions.md).
-The sixth (git policy) is open below and mirrored in
-`todo/decisions/email-git-policy.md`.
+Five decisions were answered by the owner on 2026-07-21, and the email git
+policy was answered on 2026-07-22. The records are
+[the raw-data-layer sign-off](../../../design-decisions/raw-data-layer-decisions.md)
+and [the email git-policy follow-up](../../../design-decisions/email-git-policy.md).
 
 | Decision | Owner's answer | Where it landed in this doc |
 | --- | --- | --- |
@@ -424,69 +428,7 @@ The sixth (git policy) is open below and mirrored in
 | Keep raw payloads of messages classified "unrelated"? | Keep | The category-never-drives-retention rule in [Sync design](#1-sync-design) |
 | At-rest encryption posture | Private-machines assumption; user is responsible for protecting raw data; no encryption tooling (owner's "what's the point?" question answered inline) | [Privacy](#6-privacy) |
 | Capture email attachments? | Content: never. **Metadata: yes** — filename, size, content type, provider attachment ID | [Sync design](#1-sync-design) |
-
-### Q-E: email git policy, what does the overlay repo track?
-
-**Status: OPEN.** You asked (2026-07-21): *"shouldn't we push to my private
-repo? Is that's the concern? Can you provide more examples of what actual
-data looks like and what's the consequence?"* — answered below, question
-re-posed with the original options.
-
-**Your question, answered.** Yes — the concern is precisely about pushing
-to your private GitHub repo, and here is what that means concretely.
-
-What a tracked `derived/` file would actually contain (fictional example,
-realistic shape):
-
-```yaml
-# derived/acct-01/messages/2026-07/a3f9c2d1/message.yaml
-subject: "Re: Jordan Rivers — ExampleCorp onsite + comp expectations"
-from: "sam.chen@example.com"     # a real third party's name+email
-snippet: "Hi Jordan, following up on the 185k base we discussed, and
-          checking if Thursday works for the panel with Dana Wu…"
-links: {company: examplecorp, application: examplecorp-swe-platform-20260714}
-category: interview_scheduling
-```
-
-Multiply by every synced message: tracked in git, that is a **permanent,
-pushed history** of every company you talked to, every recruiter's and
-interviewer's name, every scheduling and compensation snippet — third
-parties' information, not just yours.
-
-Why "it's a private repo" doesn't fully cover it:
-
-1. **Git history is effectively unremovable after push.** Deleting a file
-   later doesn't remove it from history; scrubbing pushed history is
-   painful and easy to get wrong. A plain untracked directory can simply be
-   deleted.
-2. **Blast radius on compromise.** A leaked GitHub token, a compromised
-   session on any machine with a clone, or a misconfigured repo setting
-   exposes the *entire history* of every subject/snippet ever synced — not
-   the current state of one laptop.
-3. **The benefit is asymmetric.** For `annotations/` (your judgments) git
-   history is genuinely valuable and irreplaceable. For `derived/` it buys
-   nothing: derived is rebuildable from local raw at any time, so the
-   offsite copy duplicates data you can already regenerate — you'd be
-   taking the risk for content with zero recovery value.
-
-Consequence if it goes wrong: someone with access to the repo (or its
-history) reads your complete job-hunt timeline — companies, stages,
-compensation discussions, recruiter/interviewer identities — and the third
-parties in it never consented to being in a pushed dataset.
-
-**Decide by:** the email sync stage · **Default if unanswered:** option A.
-
-**Options.**
-
-| | Option | What you get | What it costs / risks |
-| --- | --- | --- | --- |
-| A | Track only index *headers* + `annotations/` (minus the evidence sidecar); `derived/` and `raw/` git-ignored (recommended) | Offsite history of your judgments and the store's shape; third-party content never enters git | Message metadata has no git history — a corrupted derived zone is rebuilt from raw instead of restored from git (which the design supports anyway) |
-| B | Track derived + index + annotations | Full offsite history of all metadata | Every subject line and snippet — other people's names included — lands permanently in pushed git history; compromise exposes your whole correspondence graph |
-| C | Track nothing under email/ | Simplest | No offsite copy even of your own annotations |
-
-**Recommendation.** A.
-
-**Your answer:** ______
+| Email git policy | Track only content-free index headers and safe annotations; keep raw, derived, message rows, and quoted evidence out of git | [Decision record](../../../design-decisions/email-git-policy.md) and [Privacy](#6-privacy) |
 
 ## 11. Human questions / additional tasks
 

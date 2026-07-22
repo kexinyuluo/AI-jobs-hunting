@@ -1,7 +1,8 @@
 # Execution plan — token-usage modes (staged hybrid)
 
-**Status:** accepted for execution (2026-07-20). Companion to [README.md](README.md)
-(measured baseline + the four approaches); this document turns
+**Status:** implemented; the final mode switch shipped in `446a954` after
+the script-first and instruction-tiering stages. Companion to
+[README.md](README.md) (measured baseline + the four approaches); this document turns
 [Approach 4](approach-4-hybrid-recommended.md) into ordered work items with concrete
 specs, PR boundaries, and gates. Wording is deliberately harness-agnostic: "delegate
 to a subagent" means any coding agent the maintainer drives; nothing below depends on

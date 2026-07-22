@@ -1,11 +1,12 @@
 # Raw data layer — filesystem-as-database for every internet-facing fetch
 
-**Status:** ACCEPTED (owner sign-off 2026-07-21) with **one open question**
-(email git policy — see the [decisions index](#decisions-answered-and-one-open)).
+**Status:** accepted and partially implemented. Jobs-store stages 0–4
+shipped in PRs #49–#53; the email track is the remaining major stage.
+Every design decision is resolved, including the follow-up jobs-derived and
+email git policies. See [the current implementation map](#implementation-state).
 Produced by: web research pass → first draft → five independent design
 reviews (three angle reviews, two adversarial) → owner answers → this
-regeneration. Implementation not started; stage tasks live in
-`todo/tasks/`. All docs follow
+regeneration. Remaining implementation tasks live in `todo/tasks/`. All docs follow
 the writing rules in [docs/design/STYLE.md](../STYLE.md): every section
 self-contained, every reference clickable, every concept diagram in both
 Mermaid and plain-text form, every decision a self-contained block.
@@ -71,14 +72,15 @@ The principles every document shares:
 
 | Doc | What it covers | Post-review verdict |
 |-----|----------------|---------------------|
-| [01 — Store core](01-store-core.md) | The generic contract: five zones, write discipline, the determinism contract, identity pinning, retention with reference counting, agent ergonomics, content-egress rules | **Accepted.** Architecture endorsed by all five reviews; mechanics corrected; all five decisions resolved |
-| [02 — Job postings](02-job-postings-pipeline.md) | The first concrete domain: capture at the fetch boundary, stable posting identity, observation timeline (gap-tolerant, on-demand polling), code-only query surface, JD reuse, application linkage, suppressed-row review queue. Closure inference is **not built** (owner decision) | **Accepted.** Implementation plan ready |
-| [03 — Provider interfaces](03-provider-interfaces.md) | One abstract mail contract; Outlook and Gmail as fully isolated implementations; conformance testing; the Gmail permission problem and the resulting read-only default | **Accepted** (all four decisions resolved as recommended). Safety mechanisms are explicit deliverables |
-| [04 — Email download & categorization](04-email-download-categorization.md) | Incremental mail sync with staleness detection; categorization taxonomy; guarded company→application→role linking; triage for unknowns; the strictest privacy posture in the family | **Accepted with one open question** (git policy — clarification answered in-doc, awaiting the owner's pick) |
-| [Execution plan](execution-plan.md) | Staged delivery (one PR per stage) with acceptance gates, including honest benchmark gates | Signed off; stage tasks filed in `todo/tasks/` |
+| [01 — Store core](01-store-core.md) | The generic contract: five zones, write discipline, the determinism contract, identity pinning, retention with reference counting, agent ergonomics, content-egress rules | **Implemented for jobs.** Shared store and retention shipped; the email domain will reuse it |
+| [02 — Job postings](02-job-postings-pipeline.md) | Capture, stable posting identity, gap-tolerant observation history, code-only queries, JD reuse, application linkage, and the suppressed-row review queue | **Implemented.** Stages 1–3 shipped; the multi-day capture measurement and O(new) optimization remain follow-ups |
+| [03 — Provider interfaces](03-provider-interfaces.md) | One abstract mail contract; isolated Outlook/Gmail implementations; conformance testing; Gmail read-only by default | **Accepted, not implemented.** This is the first remaining email implementation slice |
+| [04 — Email download & categorization](04-email-download-categorization.md) | Incremental mail sync, categorization, guarded application linkage, and triage | **Accepted, not implemented.** Git policy is resolved |
+| [Application progress and calendar](../application-progress-calendar/README.md) | Structured hiring phases, booking/waiting/scheduled/reschedule states, and one private calendar todo file | **Designed, not implemented.** Required before email-driven scheduling reconciliation |
+| [Execution plan](execution-plan.md) | Staged delivery with acceptance gates | Jobs stages 0–4 shipped; remaining email work is split into focused tasks |
 
 Suggested cold-read order: this page → each doc's "For the human reviewer"
-section (~5 minutes each) → the decision blocks you're asked to fill in.
+section (~5 minutes each) → the compact decision tables and linked records.
 
 ## What it will look like (one picture)
 
@@ -99,7 +101,18 @@ Every example in this family uses the fictional Jordan-Rivers universe
 neutral slugs in paths and manifests, so nothing identifying ever appears in
 a path, manifest, or query output.
 
-## Decisions: answered, and one open
+## Implementation state
+
+| Stage | State | Evidence / remaining work |
+| --- | --- | --- |
+| 0 — store library | Shipped | PR #49 |
+| 1 — jobs capture | Shipped; measurement open | PR #50; multi-day growth/overhead/dedup soak remains |
+| 2 — builder and queries | Shipped | PR #51 |
+| 3 — pipeline integration | Shipped | PR #52; O(new) incremental-build optimization remains queued |
+| 4 — retention and gardener | Shipped | PR #53 |
+| 5 — email | Planned | Provider contract, tracker/calendar foundation, sync, categorization, reconciliation, and cutover |
+
+## Decisions: all resolved
 
 The owner answered the full decision set on 2026-07-21. The authoritative
 ADR record is
@@ -107,15 +120,16 @@ ADR record is
 each design doc carries a "Decisions (resolved)" table showing where every
 answer landed in its text.
 
-**Still open (one):**
+The owner resolved the two follow-up git-policy questions on 2026-07-22:
 
-- **Email git policy** — the owner asked what the tracked data would
-  actually look like and what the consequence is; the answer, with concrete
-  examples, is inline in
-  [the open decision block](04-email-download-categorization.md#q-e-email-git-policy-what-does-the-overlay-repo-track)
-  and the question is mirrored in `todo/decisions/email-git-policy.md`.
-  Blocks only the git-policy piece of the email sync stage; option A
-  (track index headers + annotations only) is the default path meanwhile.
+- The jobs store does not track `derived/`; it remains rebuildable and is
+  too large and churn-heavy for git. `index/`, `annotations/`, and `state/`
+  remain tracked. See
+  [the decision record](../../../design-decisions/derived-zone-git-tracking.md).
+- The email store tracks only content-free index headers and safe
+  annotations. Raw, derived, message rows, and quoted evidence remain out
+  of git. See
+  [the decision record](../../../design-decisions/email-git-policy.md).
 
 **Answers that changed the design** (beyond accepting recommendations):
 
@@ -164,11 +178,9 @@ answer landed in its text.
    instead of shipped broken; the snapshot cache retained; the Gmail
    read-only default; transition-time re-verification for email evidence;
    and the flipped email git policy.
-5. **Owner sign-off (2026-07-21).** Every decision answered; the answers
-   were folded back into the docs (this regeneration), decided-question
-   scaffolding was pruned, and the one open question kept its
-   self-contained block with the owner's clarifying question answered
-   inline.
+5. **Owner sign-off (2026-07-21), plus follow-up decisions
+   (2026-07-22).** Answers were folded back into the docs and compact
+   decision records; no raw-data-layer question remains open.
 
 ## Relationship to existing work
 
@@ -178,9 +190,10 @@ answer landed in its text.
   compose on the email path (where the next real savings live).
 - **The snapshot cache stays.** Within-session refiltering and the
   filter-variant audit are its job; cross-run memory is the store's.
-- **The application pipeline is untouched** except for one additive
-  `meta.yaml` field (the posting's store key) linking applications to
-  posting history.
+- **The shipped jobs-store integration changed the application pipeline
+  only additively:** `meta.yaml` may carry the posting's store key. The
+  planned [application-progress and calendar design](../application-progress-calendar/README.md)
+  is a separate schema-v5 change for the email scheduling track.
 - **Every hard guardrail survives:** draft-only email (structurally
   strengthened), the leak guard (plus new content-egress rules for store
   data), no fabricated postings, the location gate, blacklist/log

@@ -5,7 +5,13 @@
 - **Area**: harness
 - **Source**: stage-3 integration probe 2026-07-21; filed by the implementing session
 
-## Problem
+## Goal
+
+Make routine incremental builds scale with newly captured manifests rather
+than the total historical store, while preserving byte-identical rebuild
+equivalence.
+
+## Context
 
 `build_postings.py` incremental mode uses the ledger set-difference to *account*
 for new manifests, but the reduce pass still folds the **entire raw zone** every
