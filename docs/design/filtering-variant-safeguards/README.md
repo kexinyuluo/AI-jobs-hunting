@@ -1,7 +1,8 @@
 # Filtering Confidence and Variant Safeguards
 
-**Status:** accepted. See [execution-plan.md](execution-plan.md) for staged
-implementation and verification.
+**Status:** implemented in PR #45 (`e967b91`). See
+[execution-plan.md](execution-plan.md) for the historical staged plan and
+verification contract.
 
 ## Problem
 

@@ -1,6 +1,6 @@
 # Store stage 4 — GC config, retention enforcement, gardener routine
 
-- **Status**: todo
+- **Status**: done (shipped in PR #53) — delete in the next merged PR that touches todo/
 - **Priority**: P2 (someday)
 - **Area**: harness
 - **Source**: raw-data-layer sign-off 2026-07-21; plan: docs/design/raw-data-layer/execution-plan.md
@@ -29,7 +29,7 @@ carries frozen facts forward with zero errors and zero husks.
 
 ## Definition of done
 
-- [ ] GC expression config parses AND/OR/single filters over both dates; unit-tested against crafted manifests.
-- [ ] Prune → rebuild carries frozen facts forward: zero errors, zero husks (test on real store copy).
-- [ ] Refcount audit: a blob referenced by any keep-class manifest is never deleted (test).
-- [ ] Gardener store routine dry-run clean on the real store; reports all listed dimensions incl. not-synced-here counts.
+- [x] GC expression config parses AND/OR/single filters over both dates; unit-tested against crafted manifests.
+- [x] Prune → rebuild carries frozen facts forward: zero errors, zero husks (test on real store copy).
+- [x] Refcount audit: a blob referenced by any keep-class manifest is never deleted (test).
+- [x] Gardener store routine dry-run clean on the real store; reports all listed dimensions incl. not-synced-here counts.

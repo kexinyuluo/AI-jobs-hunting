@@ -1,6 +1,6 @@
 # Store stage 0 — shared store library, schemas, fixtures
 
-- **Status**: todo
+- **Status**: done (shipped in PR #49) — delete in the next merged PR that touches todo/
 - **Priority**: P1 (this round)
 - **Area**: harness
 - **Source**: raw-data-layer sign-off 2026-07-21; plan: docs/design/raw-data-layer/execution-plan.md
@@ -39,8 +39,8 @@ never reaches public tree).
 
 ## Definition of done
 
-- [ ] All listed modules exist under `scripts/shared/store/` and are vendored cleanly (`sync_vendored.py --check` green).
-- [ ] CI green: unit suite incl. crash-injection, torn-tail, refcount, ledger set-difference, idempotent events, incremental==rebuild, determinism, annotation-orphan hard-fail, key-registry pinning, missing-raw (`not-synced-here`) tolerance.
-- [ ] `validate_store.py examples/data/` green; over-threshold fixture triggers the warning path (test), never a silent grow or hard block.
-- [ ] Leak-guard proof test green (seeded token under `private/data/` never reaches the public tree).
-- [ ] Zero behavior change to any skill (existing suites untouched and green).
+- [x] All listed modules exist under `scripts/shared/store/` and are vendored cleanly (`sync_vendored.py --check` green).
+- [x] CI green: unit suite incl. crash-injection, torn-tail, refcount, ledger set-difference, idempotent events, incremental==rebuild, determinism, annotation-orphan hard-fail, key-registry pinning, missing-raw (`not-synced-here`) tolerance.
+- [x] `validate_store.py examples/data/` green; over-threshold fixture triggers the warning path (test), never a silent grow or hard block.
+- [x] Leak-guard proof test green (seeded token under `private/data/` never reaches the public tree).
+- [x] Zero behavior change to any skill (existing suites untouched and green).

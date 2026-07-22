@@ -1,10 +1,12 @@
 # Tree-scoped instructions: per-folder AGENTS.md loaded only on entry
 
-**Status:** designed, adversarially reviewed, and revised (2026-07-21). The
+**Status:** core mechanism implemented in PR #48; validator/exporter
+hardening remains queued. Designed, adversarially reviewed, and revised
+(2026-07-21). The
 review empirically confirmed the core mechanism in a live session (the
 folder shim really does lazy-load) and overturned four v1 mistakes, all
 fixed below and listed in [What the review changed](#6-what-the-review-changed).
-One decision block for the owner. Writing follows
+The owner chose reactive leaf growth on 2026-07-22. Writing follows
 [docs/design/STYLE.md](../STYLE.md).
 
 ---
@@ -18,8 +20,8 @@ the root contract or doesn't exist. The fix is three loading tiers: root
 (always), per-folder leaf (only when working in that folder), references
 (only when a specific task triggers them).
 
-**The review's most important finding:** the repo had **no root
-`CLAUDE.md`** — Claude Code auto-loads `CLAUDE.md`, not `AGENTS.md`, so the
+**The review's most important finding:** the repo had **no root**
+`CLAUDE.md` — Claude Code auto-loads `CLAUDE.md`, not `AGENTS.md`, so the
 agent contract was never auto-injected at boot; agents only saw it if
 something told them to read it. That pre-existing gap is now closed with a
 root `CLAUDE.md` containing an `@AGENTS.md` import (loads at launch —
@@ -37,6 +39,8 @@ flowchart TB
     root -->|router line| leaf
     leaf -->|"'before writing a design doc, read STYLE.md'"| style_
 ```
+
+
 
 Same picture, plain text:
 
@@ -79,41 +83,49 @@ session loads anyway.
 
 ---
 
+
+
 ## 1. The three tiers
 
-| Tier | File | Loaded | Budget | May contain |
-|------|------|--------|--------|-------------|
-| Root | `AGENTS.md`, injected via the root `CLAUDE.md` import shim | At boot | ≤500 lines (existing) | Hard invariants, repo map, conventions, router lines |
-| Leaf | `<folder>/AGENTS.md` + sibling `CLAUDE.md` symlink | On first read in that folder (Claude Code), on working there (Cursor), via router line (everything else) | ≤100 lines AND ≤4 KiB; target well under | **Pointers, and lines relocated out of always-loaded files. Nothing else.** |
-| References | `<folder>/agents-references/*.md` (and `docs/design/STYLE.md`, grandfathered as this tier for its folder) | Only via a task-conditioned pointer | ≤300 lines per file | Unbounded detail |
+
+| Tier       | File                                                                                                      | Loaded                                                                                                   | Budget                                   | May contain                                                                 |
+| ---------- | --------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ---------------------------------------- | --------------------------------------------------------------------------- |
+| Root       | `AGENTS.md`, injected via the root `CLAUDE.md` import shim                                                | At boot                                                                                                  | ≤500 lines (existing)                    | Hard invariants, repo map, conventions, router lines                        |
+| Leaf       | `<folder>/AGENTS.md` + sibling `CLAUDE.md` symlink                                                        | On first read in that folder (Claude Code), on working there (Cursor), via router line (everything else) | ≤100 lines AND ≤4 KiB; target well under | **Pointers, and lines relocated out of always-loaded files. Nothing else.** |
+| References | `<folder>/agents-references/*.md` (and `docs/design/STYLE.md`, grandfathered as this tier for its folder) | Only via a task-conditioned pointer                                                                      | ≤300 lines per file                      | Unbounded detail                                                            |
+
 
 Four rules, each defusing a failure mode the review demonstrated:
 
 - **Relocation-or-pointer only.** A leaf ships only content *removed from*
-  an always-loaded file in the same change, or pure pointers — reviewed as
-  a net-zero-or-negative context diff. (v1's seeds were duplicates, which
-  made every session strictly more expensive; one seed was deleted for it.)
+an always-loaded file in the same change, or pure pointers — reviewed as
+a net-zero-or-negative context diff. (v1's seeds were duplicates, which
+made every session strictly more expensive; one seed was deleted for it.)
 - **Additive-only, root wins.** A leaf never restates or contradicts the
-  root; a conflict is a bug in the leaf. This is *our* declared precedence
-  because the ecosystem has none (the AGENTS.md spec leaves nested
-  precedence formally open; tools just concatenate).
+root; a conflict is a bug in the leaf. This is *our* declared precedence
+because the ecosystem has none (the AGENTS.md spec leaves nested
+precedence formally open; tools just concatenate).
 - **Task-conditioned pointers.** References are reached only through
-  "before/when \<task\>, read \<file\>" lines. Plain import syntax is
-  banned for lazy content — in Claude Code, imports load at launch.
+"before/when task, read file" lines. Plain import syntax is
+banned for lazy content — in Claude Code, imports load at launch.
 - **Hard invariants never live in leaves.** Advisory files can't carry
-  leak-guard-class rules; those stay in root + hooks.
+leak-guard-class rules; those stay in root + hooks.
 
 Paths inside leaves are written **repo-root-relative** (except same-folder
 links), so the validator can check existence without heuristics.
 
 ## 2. Loading reality per tool
 
-| Tool | What actually happens | Our handling |
-|------|----------------------|--------------|
-| Claude Code (primary) | Auto-loads `CLAUDE.md` only. Root: **was never loading** — fixed by the root import shim. Nested: lazy-loads on first file-read in the folder (**empirically confirmed** in the review session); NOT re-injected after context compaction until the next read there. | Root `CLAUDE.md` with `@AGENTS.md`; leaf `CLAUDE.md → AGENTS.md` symlinks; a compaction rule in the router section ("after compaction, re-read the leaf of any routed folder you're still in"). |
-| Cursor (secondary) | Nested `AGENTS.md` applied natively when working in that folder. | Nothing needed. |
-| Root-only tools (Codex-class) | Load the root→cwd chain at session start; never scan below cwd; silently truncate the concatenated AGENTS.md chain at 32 KiB. | Router lines are the fallback; the 32 KiB budget applies to the **AGENTS.md chain only** (pointer targets are agent-initiated reads and never count — v1 measured this wrong). |
-| Windows public checkouts | Tracked symlinks materialize as junk one-line text files. | Documented limitation of leaf shims (same as the existing `.claude/skills` idiom); the root shim is a real file precisely to avoid this for the contract itself. |
+
+| Tool                          | What actually happens                                                                                                                                                                                                                                                | Our handling                                                                                                                                                                                    |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Claude Code (primary)         | Auto-loads `CLAUDE.md` only. Root: **was never loading** — fixed by the root import shim. Nested: lazy-loads on first file-read in the folder (**empirically confirmed** in the review session); NOT re-injected after context compaction until the next read there. | Root `CLAUDE.md` with `@AGENTS.md`; leaf `CLAUDE.md → AGENTS.md` symlinks; a compaction rule in the router section ("after compaction, re-read the leaf of any routed folder you're still in"). |
+| Cursor (secondary)            | Nested `AGENTS.md` applied natively when working in that folder.                                                                                                                                                                                                     | Nothing needed.                                                                                                                                                                                 |
+| Root-only tools (Codex-class) | Load the root→cwd chain at session start; never scan below cwd; silently truncate the concatenated AGENTS.md chain at 32 KiB.                                                                                                                                        | Router lines are the fallback; the 32 KiB budget applies to the **AGENTS.md chain only** (pointer targets are agent-initiated reads and never count — v1 measured this wrong).                  |
+| Windows public checkouts      | Tracked symlinks materialize as junk one-line text files.                                                                                                                                                                                                            | Documented limitation of leaf shims (same as the existing `.claude/skills` idiom); the root shim is a real file precisely to avoid this for the contract itself.                                |
+
+
+
 
 ## 3. Router lines (root-side anchor)
 
@@ -159,49 +171,28 @@ ratio with a whitelist.
 An adversarial review ran against v1 with access to a live Claude Code
 session and the repo's actual tooling. In plain language:
 
-| What the review found (severity) | How v2 handles it |
-|---|---|
-| The router lived in a file the primary tool never auto-loads: no root `CLAUDE.md` existed, and the session proved root `AGENTS.md` was not injected at boot. (blocker) | Root `CLAUDE.md` with an `@AGENTS.md` import — [the review's most important finding](#for-the-human-reviewer). |
-| The `todo/` leaf was ~100% restatement of always-loaded content, contained one clause conflicting with the root contract, and its lazy-load trigger (file reads) structurally misses the write-time filing work it governed. (major) | Leaf deleted, symlink deleted; queue contract stays in root — [Growth policy](#4-growth-policy-reactive-one-seed). |
-| The `docs/design/` leaf inlined compressed copies of the style contract instead of pointing at it — the exact drift vector the design warns about. (major) | Stripped to 8 lines of pure pointers; the relocation-or-pointer rule added — [The three tiers](#1-the-three-tiers). |
-| Net token effect of v1 was negative: everything added, nothing removed. (major) | The relocation rule makes leaves net-zero-or-negative by construction. |
-| The validator spec was unimplementable and already failing on the tree it claimed green (path-resolution base undefined, wrong pointer cardinality, chain budget counting files that never auto-load, unobservable gardener metric). (major) | Full respec in the validator task — [Validation and export](#5-validation-and-export). |
-| The instruction-budget script can't express leaf budgets without a schema change (filename-keyed budgets, no bytes dimension, fixed glob list). (major) | Honestly scoped in the validator task: role+path-keyed budgets, bytes column, router-driven discovery. |
-| The exporter follows symlinks (shipping a duplicated `CLAUDE.md` file into the public repo) and ships a router pointing at `todo/`, which exports omit; the leak guard fails open on broken symlinks. (major) | Exporter shim-regeneration + absent-folder gating + fail-closed symlink check, all in the validator task; router/ritual lines are existence-gated. |
-| Compaction loss and stale leaves were named as risks but not mitigated. (major) | Compaction re-read rule in the router section; churn-ratio gardener report in the validator task. |
-| Style violations in the design's own docs (a banned bare section pointer, an invented decision-ID family, drifted diagram twins). (minor) | Fixed; the decision below uses the sanctioned Q-family. |
-| Windows checkouts turn symlinks into junk text files, silently. (minor) | Documented; root shim is a real file for exactly this reason — [Loading reality](#2-loading-reality-per-tool). |
 
-## 7. Decision — owner input
+| What the review found (severity)                                                                                                                                                                                                             | How v2 handles it                                                                                                                                  |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The router lived in a file the primary tool never auto-loads: no root `CLAUDE.md` existed, and the session proved root `AGENTS.md` was not injected at boot. (blocker)                                                                       | Root `CLAUDE.md` with an `@AGENTS.md` import — [the review's most important finding](#for-the-human-reviewer).                                     |
+| The `todo/` leaf was ~100% restatement of always-loaded content, contained one clause conflicting with the root contract, and its lazy-load trigger (file reads) structurally misses the write-time filing work it governed. (major)         | Leaf deleted, symlink deleted; queue contract stays in root — [Growth policy](#4-growth-policy-reactive-one-seed).                                 |
+| The `docs/design/` leaf inlined compressed copies of the style contract instead of pointing at it — the exact drift vector the design warns about. (major)                                                                                   | Stripped to 8 lines of pure pointers; the relocation-or-pointer rule added — [The three tiers](#1-the-three-tiers).                                |
+| Net token effect of v1 was negative: everything added, nothing removed. (major)                                                                                                                                                              | The relocation rule makes leaves net-zero-or-negative by construction.                                                                             |
+| The validator spec was unimplementable and already failing on the tree it claimed green (path-resolution base undefined, wrong pointer cardinality, chain budget counting files that never auto-load, unobservable gardener metric). (major) | Full respec in the validator task — [Validation and export](#5-validation-and-export).                                                             |
+| The instruction-budget script can't express leaf budgets without a schema change (filename-keyed budgets, no bytes dimension, fixed glob list). (major)                                                                                      | Honestly scoped in the validator task: role+path-keyed budgets, bytes column, router-driven discovery.                                             |
+| The exporter follows symlinks (shipping a duplicated `CLAUDE.md` file into the public repo) and ships a router pointing at `todo/`, which exports omit; the leak guard fails open on broken symlinks. (major)                                | Exporter shim-regeneration + absent-folder gating + fail-closed symlink check, all in the validator task; router/ritual lines are existence-gated. |
+| Compaction loss and stale leaves were named as risks but not mitigated. (major)                                                                                                                                                              | Compaction re-read rule in the router section; churn-ratio gardener report in the validator task.                                                  |
+| Style violations in the design's own docs (a banned bare section pointer, an invented decision-ID family, drifted diagram twins). (minor)                                                                                                    | Fixed; the growth-policy decision was recorded through the sanctioned Q-family.                                                                    |
+| Windows checkouts turn symlinks into junk text files, silently. (minor)                                                                                                                                                                      | Documented; root shim is a real file for exactly this reason — [Loading reality](#2-loading-reality-per-tool).                                     |
 
-### Q-S: growth policy for new leaf folders
 
-**Decide by:** nothing blocks; this calibrates future behavior · **Default
-if unanswered:** option A.
 
-**Context.** The tree has one seed leaf (`docs/design/`). The question is
-when agents create the next one. Too eager and folders grow files nobody
-needed (v1 shipped exactly one such file, deleted in review); too shy and
-folder knowledge keeps landing in the root contract, growing the boot tax.
 
-**Options.**
+## 7. Decision (resolved)
 
-| | Option | What you get | What it costs / risks |
-| --- | --- | --- | --- |
-| A | Reactive (recommended): create a leaf only after the second folder-local correction, or on your explicit ask; agents propose via `todo/decisions/` when unsure — and every leaf must satisfy the relocation-or-pointer rule | Tree grows only where reality demanded it; leaves are net-negative context by construction | A folder's first mistake happens once without local guidance |
-| B | Proactive: seed leaves for all major folders now | Complete coverage immediately | The review demonstrated this failure concretely: boilerplate leaves cost tokens on every session and drift against the files they duplicate |
-
-**Recommendation.** A.
-
-**Your answer:** ______
-
-## 8. Human questions / additional tasks
-
-*Owner space — anything written here is picked up by the next agent session
-(see the async-collaboration contract in `AGENTS.md`). Questions get
-answered in place; tasks get filed into `todo/` and linked back here.*
-
-- (none right now)
+| Decision | Owner's answer | Record |
+| --- | --- | --- |
+| When should new folder-scoped instruction leaves be created? | Reactively: after the second folder-local correction or an explicit owner request; use `todo/decisions/` when unsure, and require relocation-or-pointer-only content | [Tree-instruction growth policy](../../../design-decisions/tree-instruction-growth-policy.md) |
 
 ## Research notes (provenance)
 
@@ -218,3 +209,11 @@ instruction file cut task tokens ~17% while bloated ones *raised* costs
 the validator task adapts. The adversarial review added two empirical data
 points from a live session: leaf symlink shims do trigger Claude Code's
 lazy injection, and root `AGENTS.md` (without a shim) was never loaded.
+
+## 8. Human questions / additional tasks
+
+*Owner space — anything written here is picked up by the next agent session
+(see the async-collaboration contract in `AGENTS.md`). Questions get
+answered in place; tasks get filed into `todo/` and linked back here.*
+
+- (none right now)

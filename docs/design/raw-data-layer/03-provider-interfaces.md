@@ -1,13 +1,14 @@
 # 03 — Provider interfaces: one email contract, isolated Outlook/Gmail implementations
 
-**Status:** ACCEPTED (owner sign-off 2026-07-21). All four decisions are
+**Status:** accepted; implementation is the next email-focused stage. All four decisions are
 answered exactly as recommended — rename with no alias, multi-account
 partitioning from day one, read-only live conformance behind `--live`, and
 Gmail read-only (revisit only if Gmail drafting becomes a real daily need).
 Record:
 [design-decisions/raw-data-layer-decisions.md](../../../design-decisions/raw-data-layer-decisions.md);
-summary in [Decisions (resolved)](#5-decisions-resolved). Implementation not
-started. Writing follows [docs/design/STYLE.md](../STYLE.md).
+summary in [Decisions (resolved)](#5-decisions-resolved). The focused task
+is `todo/tasks/email-provider-contract.md`. Writing follows
+[docs/design/STYLE.md](../STYLE.md).
 
 Part of the [raw-data-layer family](README.md); the
 [email store](04-email-download-categorization.md) builds on this.

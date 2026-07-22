@@ -1,10 +1,12 @@
 # 01 — Store core: the filesystem-as-database contract
 
-**Status:** ACCEPTED (owner sign-off 2026-07-21). All five of this doc's
-decisions are answered and folded into the text below; the record lives in
+**Status:** accepted and implemented for the jobs domain. The shared store
+shipped in PR #49 and retention/gardener hardening in PR #53; the email
+domain remains planned. All design decisions are resolved; the record lives in
 [design-decisions/raw-data-layer-decisions.md](../../../design-decisions/raw-data-layer-decisions.md)
 and a compact summary in [Decisions (resolved)](#13-decisions-resolved).
-Implementation not started. Writing follows
+The follow-up decision to keep `derived/` out of git supersedes the original
+small-zones assumption. Writing follows
 [docs/design/STYLE.md](../STYLE.md).
 
 Part of the [raw-data-layer family](README.md). The two consumers of this
@@ -529,7 +531,7 @@ example thresholds above) for the owner to tune.
 | -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **SQLite as the store**                                              | Opaque to `ls`/`cat`/git-diff — humans can't investigate without tooling, and grep-ability by agents is the dominant requirement. SQLite's own pile-of-files critique (transactions, incremental update speed) is acknowledged; the pre-decided escape hatch is: if index files exceed ~10 MB or a real concurrent-writer need appears, an SQLite **cache derived from the store** is sanctioned. SQLite as the *truth* never is. |
 | **Keep enriching the existing snapshot cache** (`tmp/search_cache/`) | Snapshots are per-profile, pre-filter, short-TTL, and mutable — no identity, no timeline, no cross-run dedup. Fixing all four means building this design inside a directory named `tmp/`. (Snapshots do stay for their within-session job — see the [job-postings integration](02-job-postings-pipeline.md#6-pipeline-integration).)                                                                                              |
-| **Git as the database** (commit every fetch to the overlay repo)     | Git history of large rewritten JSON balloons the repo and makes it unusable; content-addressed blobs dedupe without weaponizing git. Git stays right for the small zones — decided as the tracked-zones split in [Decisions](#13-decisions-resolved).                                                                                                                                                                               |
+| **Git as the database** (commit every fetch to the overlay repo)     | Git history of large rewritten JSON balloons the repo and makes it unusable; content-addressed blobs dedupe without weaponizing git. Git stays right for the genuinely small `index/`, `annotations/`, and `state/` zones; `raw/` and `derived/` remain untracked.                                                                                                                                                                  |
 | **Per-run folders instead of per-entity folders**                    | Optimizes writing, ruins reading: "history of posting X" would scan every run folder ever. Entities are what humans and agents query; run history survives anyway via manifests and the ledger.                                                                                                                                                                                                                                   |
 | **Version fields on every JSONL line**                               | Line-level versions invite mixed-version files, which invite dual-read code. Whole-file versioning plus rebuild keeps every file single-version by construction.                                                                                                                                                                                                                                                                  |
 
@@ -595,7 +597,7 @@ the design text above.
 
 | Decision | Owner's answer | Where it landed in this doc |
 | --- | --- | --- |
-| Track the store's small zones in the overlay git repo? | Yes — track `derived/`, `index/`, `annotations/`, `state/`; gitignore `raw/`. **Plus a new requirement:** everything must work with locally missing raw (multi-laptop, manually-synced setup). | The tracked-zones split stands; the new "raw may be locally absent" rule in [Zones](#1-zones-and-their-contracts) and the three blob-absence states in [Retention](#9-retention-and-growth) |
+| Track the store's small zones in the overlay git repo? | Follow-up decision: track `index/`, `annotations/`, and `state/`; gitignore both `raw/` and the large, rebuildable `derived/` zone. Everything must still work with locally missing raw. | [Follow-up decision record](../../../design-decisions/derived-zone-git-tracking.md), the "raw may be locally absent" rule in [Zones](#1-zones-and-their-contracts), and the blob-absence states in [Retention](#9-retention-and-growth) |
 | Retention defaults for raw payloads | Replaced fixed day-counts with a **GC expression config** over posting-date and last-observed-date filters, AND by default, OR/single-filter supported | [The GC config](#the-gc-config-decided-2026-07-21) |
 | Builder lock behavior on contention | Fail fast | [Write discipline](#8-write-discipline-and-concurrency) |
 | Size budget for the public example store | Under 100 KB as a **soft threshold**: exceeding it warns a human; a human may approve and raise the (configurable) threshold | Execution-plan Stage 0 (the fixture check warns, never silently blocks or silently grows) |

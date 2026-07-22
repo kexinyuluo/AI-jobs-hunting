@@ -1,6 +1,6 @@
 # Stage 2 execution plan — instruction tiering (approved 2026-07-20)
 
-**Status:** in execution. Follows the Stage-1 measured result
+**Status:** completed. This is the historical Stage-2 plan; it followed the Stage-1 measured result
 (`evals/results/stage1-benchmark-20260720.md`: ~502k vs 437k baseline, +15%)
 and the maintainer's review/go-ahead. Boot tax (~35–40% per agent) is the
 measured binding constraint; this stage attacks it, plus the two defects the

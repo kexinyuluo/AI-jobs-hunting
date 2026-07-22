@@ -1,8 +1,9 @@
 # Token-usage modes for job search + application drafting
 
-**Status:** accepted (2026-07-20) — execution underway per
-[execution-plan.md](execution-plan.md). This records a measured baseline, the
-cost taxonomy, and four candidate designs.
+**Status:** implemented. Script-first handoff, instruction tiering, and the
+`token_saving` / `full` mode switch all shipped; see
+[execution-plan.md](execution-plan.md) for the historical stages. This
+records the measured baseline, cost taxonomy, and candidate designs.
 
 ## Problem
 

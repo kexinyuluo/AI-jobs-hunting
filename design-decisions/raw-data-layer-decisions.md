@@ -1,6 +1,6 @@
-# Raw-data-layer design family: owner decisions (sign-off round 1)
+# Raw-data-layer design family: owner decisions
 
-- **Status**: decided (one item deliberately left open — see bottom)
+- **Status**: decided; follow-up git-policy decisions were resolved on 2026-07-22
 - **Date**: 2026-07-21
 - **Decided by**: owner, answering the self-contained decision blocks in
   `docs/design/raw-data-layer/` (v2, post-review)
@@ -18,7 +18,7 @@ git history of those docs.
 
 | # | Question | Decision |
 |---|----------|----------|
-| 1 | Overlay git tracking (jobs store) | Track `derived/`, `index/`, `annotations/`, `state/`; gitignore `raw/`. **New requirement:** all implementations tolerate locally missing raw — multi-laptop setup, raw synced manually, `not-synced-here` is a normal state |
+| 1 | Overlay git tracking (jobs store) | Originally tracked `derived/`, `index/`, `annotations/`, and `state/`; gitignored `raw/`. Real-store size later changed the derived-zone decision: [keep `derived/` out of git](derived-zone-git-tracking.md). Missing raw remains a normal `not-synced-here` state |
 | 2 | Raw retention | A **GC expression config**, not fixed day-counts: independent filters on posting/reposting date and last-observed date, combined with AND by default, OR or single-filter supported (e.g. "posting date > 90 d AND last observed > 30 d") |
 | 3 | Builder lock contention | Fail fast |
 | 4 | Public fixture-store size | 100 KB **soft threshold**: exceeding warns a human; human approval can raise the (configurable) threshold |
@@ -36,19 +36,21 @@ git history of those docs.
 | 16 | At-rest encryption | None built. Documented assumption: private machines, user is responsible for protecting raw data (owner's clarifying question answered in the doc: FileVault already covers the one relevant scenario) |
 | 17 | Email attachments | Content never captured; **metadata captured** (filename, size, content type, provider attachment ID) |
 
-## Left open (deliberately)
+## Follow-up decisions
 
-- **Email git policy** — the owner asked what tracked data would look like
-  and what the consequence is; answered with concrete examples inside the
-  decision block in
-  `docs/design/raw-data-layer/04-email-download-categorization.md`, question
-  re-posed, mirrored at `todo/decisions/email-git-policy.md`. Default path
-  while open: option A (track index headers + annotations only).
+- **Email git policy (resolved 2026-07-22):** track only content-free index
+  headers and safe annotations; keep raw, derived, message index rows, and
+  the evidence sidecar out of git. See
+  [email-git-policy.md](email-git-policy.md).
+- **Jobs derived-zone policy (resolved 2026-07-22):** the real build showed
+  that `derived/` is large and churn-heavy, so it is no longer tracked. See
+  [derived-zone-git-tracking.md](derived-zone-git-tracking.md).
 
 ## Consequences
 
-- Stage tasks filed under `todo/tasks/store-stage-{0..5}.md`; only the
-  email git-policy piece of stage 5b is decision-blocked.
+- Jobs stages 0–4 shipped. The remaining email work is split into focused
+  tasks linked from `docs/design/application-progress-calendar/execution-plan.md`;
+  no part is decision-blocked.
 - The lifecycle/closure-inference spec was pruned from doc 02 (recoverable
   from git history); reviving it requires a new `todo/decisions/` item.
 - Decisions 1, 2, 4, 5, 6, 7, 8, 14, 16, 17 changed the design beyond the

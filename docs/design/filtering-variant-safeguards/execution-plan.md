@@ -1,8 +1,9 @@
 # Execution plan — Filtering Confidence and Variant Safeguards
 
-**Status:** accepted for staged execution. Companion to [README.md](README.md),
-which defines the assessment contract, evidence architecture, harness split, and
-privacy model.
+**Status:** implemented in PR #45 (`e967b91`). This file is the historical
+staged plan and verification contract. Companion to [README.md](README.md),
+which defines the assessment contract, evidence architecture, harness split,
+and privacy model.
 
 ## Ground rules
 

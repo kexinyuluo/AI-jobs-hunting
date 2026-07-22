@@ -1,14 +1,16 @@
 # 02 — Job postings: capture, identity, code-only filtering
 
-**Status:** ACCEPTED (owner sign-off 2026-07-21). The committed core
+**Status:** accepted and implemented. Capture, builder/query, and pipeline
+integration shipped in PRs #50–#52. The committed core
 (capture, identity, index, query, JD reuse) is confirmed; the owner chose
 **on-demand polling**, so closure inference is not built at all (see
 [the lifecycle note](#4b-lifecycle-not-built-decided-2026-07-21));
 suppressed sweep rows get a review queue; log consolidation is deferred to
 the todo queue. Record:
 [design-decisions/raw-data-layer-decisions.md](../../../design-decisions/raw-data-layer-decisions.md);
-summary in [Decisions (resolved)](#11-decisions-resolved). Implementation
-not started. Writing follows [docs/design/STYLE.md](../STYLE.md).
+summary in [Decisions (resolved)](#11-decisions-resolved). The remaining
+follow-ups are the multi-day capture measurement and the O(new) incremental
+build optimization. Writing follows [docs/design/STYLE.md](../STYLE.md).
 
 Builds on [the store core](01-store-core.md); implementation steps in
 [the execution plan](execution-plan.md).

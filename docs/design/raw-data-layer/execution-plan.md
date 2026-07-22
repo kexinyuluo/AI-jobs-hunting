@@ -1,11 +1,11 @@
 # Execution plan — raw data layer
 
-**Status:** SIGNED OFF (2026-07-21) — the owner answered every decision;
-the record is
+**Status:** signed off and partially implemented. Jobs stages 0–4 shipped
+in PRs #49–#53; the remaining work is the email track and two jobs-store
+follow-ups. The owner answered every decision; the record is
 [design-decisions/raw-data-layer-decisions.md](../../../design-decisions/raw-data-layer-decisions.md).
-One question remains open (email git policy, tracked in
-`todo/decisions/email-git-policy.md`) and blocks only the Stage-5b git-policy
-piece. Stage tasks are filed in `todo/tasks/` (one per stage). Scope note: the committed scope is capture + identity + index + query +
+The later jobs-derived and email git-policy decisions are also resolved.
+Remaining tasks are filed in `todo/tasks/`. Scope note: the committed scope is capture + identity + index + query +
 JD reuse + application linkage; closure/lifecycle inference is **not
 built** — the owner chose on-demand polling. Writing follows
 [docs/design/STYLE.md](../STYLE.md).
@@ -14,7 +14,7 @@ built** — the owner chose on-demand polling. Writing follows
 one PR. Each stage lands green (CI + leak guard) and is useful on its own;
 no stage depends on a later one.
 
-## Stage 0 — store library, schemas, fixtures (no behavior change)
+## Stage 0 — store library, schemas, fixtures — SHIPPED (PR #49)
 
 Build the shared library `scripts/shared/store/` implementing
 [the store-core contract](01-store-core.md): zone paths (including the
@@ -53,7 +53,7 @@ zero change to any skill's behavior; a fixture over the soft threshold
 produces the warning path, not a failure.
 **Decisions:** all resolved — see the record above.
 
-## Stage 1 — capture at the jobs fetch boundary (write-only)
+## Stage 1 — capture at the jobs fetch boundary — SHIPPED (PR #50)
 
 Wire the capture hook into every job fetch path per
 [the capture design](02-job-postings-pipeline.md#1-capture-at-the-fetch-boundary):
@@ -71,7 +71,8 @@ versioned) must precede any semantic content hash, or every poll looks
 "changed"; confirm SmartRecruiters truncation behavior at its response cap.
 
 Fetchers take no locks; capture failure warns and never fails a search.
-Then run real searches for several days and measure: store growth per run
+The implementation shipped; the remaining soak task is to run real
+searches for several days and measure store growth per run
 under the honest sizing model, capture overhead (target under one second
 per run), dedup ratio on unchanged boards.
 
@@ -80,7 +81,7 @@ valid groups; an induced parse failure demonstrably leaves readable raw
 (the design's core promise, as a test); concurrent capture from two
 processes is clean.
 
-## Stage 2 — builder, derived postings, index, query tool (committed core)
+## Stage 2 — builder, derived postings, index, query tool — SHIPPED (PR #51)
 
 `build_postings.py`: ledger-ordered incremental builds and full rebuilds
 (build-aside, verify — schema, counts, 100% annotation matches,
@@ -119,7 +120,7 @@ The pruned closure-inference spec survives in git history; reviving it is a
 new decision filed in `todo/decisions/`, and its test suite would be the
 adversarial review's false-closure scenarios.
 
-## Stage 3 — pipeline integration (benchmark-gated)
+## Stage 3 — pipeline integration — SHIPPED (PR #52)
 
 - `search_jobs.py`: post-fetch incremental build; one added summary line
 ("store: N tracked, M new since your last review"). **The snapshot cache
@@ -146,7 +147,7 @@ before landing in a tracked file.
 refilter and variant audit behave identically to before.
 **Decisions needed first:** none new.
 
-## Stage 4 — retention, gardener, hardening
+## Stage 4 — retention, gardener, hardening — SHIPPED (PR #53)
 
 Retention enforcement per
 [the retention design](01-store-core.md#9-retention-and-growth), driven by
@@ -166,13 +167,11 @@ machines, user-protected.)
 followed by a rebuild degrades exactly as designed (facts carried forward,
 zero errors, zero data husks).
 
-## Stage 5 — email track (gated on its own sign-off)
+## Stage 5 — email track — PLANNED
 
-Sequenced after the jobs core proves the pattern. All email decisions are
-resolved except one: **email git policy**
-([the open block](04-email-download-categorization.md#q-e-email-git-policy-what-does-the-overlay-repo-track),
-mirrored in `todo/decisions/email-git-policy.md`) — it blocks only the
-git-policy piece of 5b, nothing else.
+The jobs core has proved the pattern, and every email decision is resolved.
+The detailed order now lives in
+[the application-progress/calendar execution plan](../application-progress-calendar/execution-plan.md):
 
 - **5a — provider contract + conformance.** Behavior-identical relocation
 of the Outlook code into the provider folder; the audited transport with
@@ -183,17 +182,21 @@ hook paths updated in the same PR; skill renamed per the decision.
 Acceptance: conformance green on the synthetic mailbox; one read-only
 live run; every existing draft-only test preserved; **the new checker
 demonstrably fails a planted send-capable provider fixture.**
-- **5b — download-emails sync.** Full resync first (with inventory-diff
+- **5b — tracker progress + calendar foundation.** Ship schema v5, the
+  structured phase/workflow state, and one private `calendar.md` before
+  email evidence can propose scheduling changes.
+- **5c — download-emails sync.** Full resync first (with inventory-diff
 tombstoning), delta sync second, per-account state in the state zone,
 provider-immutable-ID keys, the staleness tripwire, explicit
 deletion/move semantics; folder scope Inbox + Sent + Drafts and
 attachment **metadata-only** capture (filename, size, content type,
 provider attachment ID — never content), both per owner decision.
-- **5c — categorization + linking.** The taxonomy; the association ladder
+- **5d — categorization + linking + scheduling reconciliation.** The taxonomy; the association ladder
 with the shared-ATS-domain denylist and company-gated token matching;
 derivation-and-confidence recording; triage queues; the by-application
-reverse index; the git-ignored evidence sidecar.
-- **5d — store-first review + reconciliation.** The intersection-based
+  reverse index; the git-ignored evidence sidecar; and booking,
+  awaiting-schedule, confirmed, and reschedule progress/calendar updates.
+- **5e — store-first review + cutover.** The intersection-based
 side-by-side trial; transition-time re-verification wired into the
 reconciliation flow (tested end-to-end against the adversarial review's
 wrong-application scenarios); cutover on the decided dual criterion — five
@@ -216,7 +219,7 @@ stabilize.
 | Token savings don't materialize                              | Reframed gates: cold cost-ceiling + warm delta at Stage 3; the big prize measured at Stage 5d, not promised earlier                    |
 | Lifecycle fabricates closures of live jobs                   | Closure inference is not built at all (owner decision); the store never claims "closed"                            |
 | Email mislink causes a wrong status change                   | Transition-time re-verification is a contract requirement of Stage 5d, tested against the exact attack scenarios                       |
-| Scope creep into email before jobs proves out                | Stage 5 is sequenced last; its one open decision (git policy) is tracked in the todo queue                                                                                |
+| Scope creep into email before jobs proves out                | Jobs stages 0–4 are complete; Stage 5 is split into focused provider, tracker/calendar, sync, and reconciliation tasks                                                   |
 | Disk growth surprises                                        | Stage 1 measures real growth before anything depends on the store; reference-counted retention lands at Stage 4                        |
 
 
@@ -224,12 +227,14 @@ stabilize.
 
 ## Task filing
 
-Sign-off received 2026-07-21. One self-contained task file per stage lives
-in `todo/tasks/` (`store-stage-0` … `store-stage-5`), and the one open
-decision is mirrored in `todo/decisions/email-git-policy.md` with option A
-as the default path (per the todo-queue convention in `AGENTS.md`). This
-plan remains the narrative source of truth; the task files carry the
-per-stage acceptance checklists.
+Sign-off received 2026-07-21. Completed Stage-2 and Stage-3 queue files
+were removed after their retention cycle; Stage 0 and Stage 4 are marked
+done for cleanup in the next todo-touching PR, while Stage 1 keeps its
+measurement follow-up. The former Stage-5 omnibus task is superseded by
+`email-provider-contract.md`, `application-progress-calendar.md`,
+`email-store-sync.md`, and `email-progress-reconciliation.md`. This plan
+remains the narrative source of truth; task files carry focused acceptance
+checklists.
 
 ## Human questions / additional tasks
 
