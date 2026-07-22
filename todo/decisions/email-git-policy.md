@@ -1,7 +1,6 @@
 # Email store git policy — what does the private overlay repo track?
 
-- **Status**: awaiting-owner-input (owner's clarifying question answered
-  2026-07-21; question re-posed)
+- **Status**: folding
 - **Filed**: 2026-07-21
 - **Blocking?**: only the git-policy piece of the email sync stage
   (execution-plan stage 5b); nothing else

@@ -1,6 +1,6 @@
 # Should the store's `derived/` zone be git-tracked in the overlay repo?
 
-- **Status**: awaiting-owner-input
+- **Status**: folding
 - **Filed**: 2026-07-21
 - **Blocking?**: Nothing. The default path (A) is already in force via
   `private/.gitignore` (`data/*/derived/` is ignored). This decision only
