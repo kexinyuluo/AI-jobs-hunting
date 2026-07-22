@@ -130,12 +130,15 @@ Claude Code plugin marketplace via
 ```
 config.example.yaml      # tracked "Jordan Rivers" placeholder (+ no-config fallback)
 examples/                # fictional profile/templates/app + public resume/JD fixtures
-skills/<skill>/  # the skills: SKILL.md + self-contained scripts
-automation/              # shared modules, vendoring, maintenance, metrics, leak guard, hooks
+skills/<skill>/          # the skills: SKILL.md + self-contained scripts
+automation/              # everything that runs: shared modules, vendoring, maintenance,
+                         #   metrics, leak guard, git hooks, the reconciler
+templates/               # single source of truth for process-file schemas
 evals/                   # per-skill canary evals (gate skill-instruction changes)
-hooks/                   # tracked git hooks (drift check, compile, leak guard)
 handbook/                # extended reference: architecture, private overlay, metrics
 design/                  # active design programs (one folder per topic)
+message-queue/ tasks/    # async human<->agent messages / work items (status = folder)
+memory/ roadmap/ history/  # ADRs+facts+lessons / desired-vs-current state / session handovers
 AGENTS.md                # the agent-facing contract (guardrails + conventions)
 ```
 

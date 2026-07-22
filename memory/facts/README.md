@@ -6,11 +6,4 @@ tooling quirks, owner-stated invariants. State current truth plainly;
 update the file when reality changes (git remembers the old state), and
 delete facts that stop being true.
 
-```markdown
-# <The fact, stated as a sentence>
-
-- **Filed**: YYYY-MM-DD
-- **Source**: how we know (link, session, observed behavior)
-
-<Elaboration: scope, evidence, what would falsify it.>
-```
+Schema: copy `templates/memory/fact.md` (validated by `automation/reconcile/reconcile.py`).

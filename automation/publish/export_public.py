@@ -72,6 +72,8 @@ ALLOWLIST_DIRS = [
     "automation/publish",
     "evals",
     "automation/hooks",
+    "automation/reconcile",
+    "templates",
     ".github",
     ".claude-plugin",
     "handbook",

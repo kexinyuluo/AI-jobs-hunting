@@ -15,9 +15,16 @@
 - PR 2 (#57): dissolved `docs/` — annex split into named `handbook/` docs
   (all "§N" pointers now named links), design families → `design/`,
   exporter allowlist updated.
-- PR 3: hidden `.agents/skills/` → visible `skills/` (adapter symlinks
-  retargeted; `.agents/skills` kept as a tracked symlink), `scripts/` →
-  `automation/`, `hooks/` → `automation/hooks/`; fixed depth-shifted
-  `parents[N]` repo-root constants and segmented path literals; full test
-  battery green (shared, publish, job-search 210, resume-writer, tracker,
-  outlook, example render, verify-links).
+- PR 3 (#58): hidden `.agents/skills/` → visible `skills/` (adapter
+  symlinks retargeted; `.agents/skills` kept as a tracked symlink),
+  `scripts/` → `automation/`, `hooks/` → `automation/hooks/`; fixed
+  depth-shifted `parents[N]` repo-root constants and segmented path
+  literals; full test battery green (shared, publish, job-search 210,
+  resume-writer, tracker, outlook, example render, verify-links).
+- PR 4: added `templates/` (13 schemas; READMEs now link instead of
+  restating), the reconciler (`automation/reconcile/reconcile.py` — 6
+  checks, retry filing, generated `memory/index.md`) wired into pre-commit
+  + CI + exporter, `roadmap/` (desired/current state), `history/` (+ this
+  session's handover), `handbook/collaboration-modes.md`, and delta edits
+  to `AGENTS.md` (mode line, boot additions, reconciler guardrail,
+  templates router line).

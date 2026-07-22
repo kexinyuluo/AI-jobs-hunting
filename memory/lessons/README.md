@@ -13,11 +13,4 @@ Rules (shared with the per-skill zones):
   near-duplicate. The gardener's `lessons-report` flags stale/duplicate
   entries.
 
-```markdown
-# <The lesson, as an imperative sentence>
-
-- **Filed**: YYYY-MM-DD
-- **Source**: the failure that taught it (link or description)
-
-**Why:** what went wrong. **How to apply:** what to do differently.
-```
+Schema: copy `templates/memory/lesson.md` (validated by `automation/reconcile/reconcile.py`).

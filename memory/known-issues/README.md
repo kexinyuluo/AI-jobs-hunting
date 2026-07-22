@@ -18,27 +18,6 @@ not need the original session or result file to act on it.
 
 ## File format
 
-```markdown
-# <Title>
-
-- **Status**: open | fixed | wontfix
-- **Severity**: high (wrong output / data loss) | medium (wasted cost or
-  manual workaround) | low (cosmetic)
-- **Area**: job-search | resume-writer | tracker | harness | benchmarks | repo
-- **Source**: first-seen evidence (result file, GH issue #, session date)
-
-## Symptom
-What goes wrong, observably.
-
-## Reproduction
-Exact command(s) / inputs that show it. If not deterministic, the conditions.
-
-## Impact
-Who/what it costs (tokens, time, correctness) and how often.
-
-## Root cause
-If known; otherwise current best hypothesis, marked as such.
-
-## Suggested fix
-Concrete enough that an agent could implement from this file alone.
-```
+Copy `templates/memory/known-issue.md` and fill the blanks — the template
+is the single source of truth for this schema (validated by
+`automation/reconcile/reconcile.py`).

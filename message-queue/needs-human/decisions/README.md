@@ -33,25 +33,6 @@ or a prior session.
 
 ## File format
 
-```markdown
-# <Title — phrased as the question>
-
-- **Status**: awaiting-owner-input | parked-until-revisit
-- **Revisit when**: (parked items only) the concrete condition that reopens this
-- **Filed**: YYYY-MM-DD
-- **Source**: [descriptive source](../../../path/to/source.md)
-- **Blocking?**: what work (if any) is blocked until decided
-- **Default path**: what happens if this stays unanswered
-
-## Background
-Everything needed to decide, self-contained. Assume no other reading.
-
-## Options
-### Option A — <name>
-What it means, pros, cons, cost.
-### Option B — <name>
-...
-
-## Recommendation
-The agent's recommendation and the one-paragraph reason.
-```
+Copy `templates/queue/decision.md` and fill the blanks — the template is
+the single source of truth for this schema (validated by
+`automation/reconcile/reconcile.py`).
