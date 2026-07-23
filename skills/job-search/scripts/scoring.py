@@ -403,6 +403,28 @@ def experience_ok(posting: JobPosting, profile: dict) -> bool:
     return assess_required_yoe(blob, cap=int(cap))["decision"] != "no_match"
 
 
+def comp_ok(posting: JobPosting, profile: dict) -> bool:
+    """Drop postings whose stated salary is clearly annual and below the floor.
+
+    Fires only when ``profile["comp"]["min_base"]`` is set AND the posting states a
+    salary whose upper bound reads as an annual USD figure below the floor. A range
+    that reaches the floor at its top is kept. No stated salary, small numbers
+    (< 15k — per-hour/per-month or a parse artifact), and unparseable values are all
+    kept: the floor never guesses.
+    """
+    floor = (profile.get("comp") or {}).get("min_base")
+    if not floor:
+        return True
+    s = getattr(posting, "salary_range", None)
+    if not isinstance(s, dict):
+        return True
+    hi, lo = s.get("max"), s.get("min")
+    top = hi if isinstance(hi, (int, float)) else lo
+    if not isinstance(top, (int, float)) or top < 15000:
+        return True
+    return top >= float(floor)
+
+
 # --------------------------------------------------------------------------- #
 # AI-native / AI-transitioning company signal
 # --------------------------------------------------------------------------- #
@@ -507,6 +529,11 @@ def score_posting(posting: JobPosting, profile: dict,
     strong = [k for k in (kw.get("strong") or []) if term_matches(k, ntitle + " " + ndesc)]
     good = [k for k in (kw.get("good") or []) if term_matches(k, ndesc)]
     neg = [k for k in (kw.get("negative") or []) if term_matches(k, ntitle + " " + ndesc)]
+    # negative_neutralize: a whitelisted domain (e.g. robotics) exempts a posting
+    # from the negative penalty — mirrors titles.exclude_neutralize.
+    if neg and any(term_matches(n, ntitle + " " + ndesc)
+                   for n in (kw.get("negative_neutralize") or [])):
+        neg = []
 
     for k in strong:
         bump = 8 if term_matches(k, ntitle) else 4

@@ -359,6 +359,20 @@ companies:
   - {name: Xylem, ats: workday, token: xylem, host: xylem.wd5.myworkdayjobs.com, site: xylem-careers, tags: [ai-adopter, healthcare], poll_batch: ai-expansion-04}
   - {name: Zebra Technologies, ats: workday, token: zebra, aliases: [ZBRA], host: zebra.wd501.myworkdayjobs.com, site: Zebra_careers, tags: [ai-adopter], poll_batch: ai-expansion-04}
   - {name: Zilliz, ats: lever, token: zilliz, tags: [ai-native, data-platform], poll_batch: ai-expansion-04}
+  # ---- Kexin overlay additions (verified reachable 2026-07-21) ----
+  - {name: Salesforce, ats: workday, token: salesforce, host: salesforce.wd12.myworkdayjobs.com, site: External_Career_Site, tags: [bigtech, saas], poll_batch: kexin-adds}
+  - {name: Gong, ats: greenhouse, token: gongio, tags: [saas], poll_batch: kexin-adds}
+  - {name: Box, ats: greenhouse, token: boxinc, tags: [saas, enterprise-infra], poll_batch: kexin-adds}
+  - {name: Verkada, ats: greenhouse, token: verkada, tags: [enterprise-infra], poll_batch: kexin-adds}
+  - {name: Ripple, ats: greenhouse, token: ripple, tags: [fintech], poll_batch: kexin-adds}
+  - {name: SambaNova, ats: greenhouse, token: sambanovasystems, tags: [ai-infra, semiconductor], poll_batch: kexin-adds}
+  - {name: Anduril, ats: greenhouse, token: andurilindustries, tags: [enterprise-infra], poll_batch: kexin-adds}
+  - {name: Cortex, ats: greenhouse, token: cortex, tags: [dev-tools], poll_batch: kexin-adds}
+  - {name: Sourcegraph, ats: greenhouse, token: sourcegraph91, tags: [dev-tools], poll_batch: kexin-adds}
+  - {name: Cerebras, ats: ashby, token: cerebras, tags: [ai-infra, semiconductor], poll_batch: kexin-adds}
+  - {name: 1Password, ats: ashby, token: 1password, tags: [enterprise-infra, saas], poll_batch: kexin-adds}
+  - {name: Airwallex, ats: ashby, token: airwallex, tags: [fintech], poll_batch: kexin-adds}
+  - {name: Canva, ats: smartrecruiters, token: canva, tags: [consumer], poll_batch: kexin-adds}
   # END GENERATED AI EXPANSION
   # 92 promoted companies across 4 batches.
   # ---- Blacklist ----

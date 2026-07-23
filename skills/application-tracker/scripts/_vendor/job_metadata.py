@@ -1191,6 +1191,19 @@ _SPONSOR_NEGATIVE = (
     "us citizens only", "u.s. citizens only", "must be a us citizen",
     "must be a u.s. citizen", "citizenship is required", "green card holders only",
     "gc only", "green card required", "permanent resident only",
+    # Citizen-OR-green-card requirements (ITAR / US export-control roles) — the
+    # candidate needs sponsorship, so "must be a citizen OR green-card holder"
+    # excludes them just as hard. (Caught 2026-07-21: Paperless Parts said
+    # "require US Citizenship or Green Card Holder".) Bare "itar" is deliberately
+    # omitted — it appears in company-wide boilerplate (false positives).
+    "citizenship or green card", "citizen or green card",
+    "citizenship or a green card", "citizen or a green card",
+    "green card or us citizen", "green card or u.s. citizen", "green card or citizen",
+    "green card holder or us citizen", "citizenship or permanent resident",
+    "citizen or permanent resident", "citizenship or permanent residency",
+    "export control laws and require", "export control and require",
+    "export control regulations and require",
+    "must be a us person", "must be a u.s. person",
 )
 _SPONSOR_POSITIVE = (
     "sponsor h-1b", "sponsor h1b", "h-1b sponsorship", "h1b sponsorship",
