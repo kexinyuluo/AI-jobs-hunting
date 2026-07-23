@@ -93,6 +93,39 @@ Lifecycle tags: each `##` section carries `<!-- added: <first-seen> · last_conf
   dev-tools/consumer/data-platform (Replit, Warp, Waymo/Nuro/Zoox, Palantir). See SKILL.md
   "AI-native / AI-transitioning company fit" for the two-signal scoring model.
 
+## Pre-tailor screening — hard disqualifiers & fit filters
+<!-- added: 2026-07-21 · last_confirmed: 2026-07-21 · status: active -->
+- Origin: a "TOP-30 remote" list for a mid-level full-stack candidate came back ~60% mis-fit
+  because ranking matches titles/keywords, not the real role. **Pre-screen the whole list and
+  drop the disqualified BEFORE tailoring; only tailor survivors. Never tailor blindly down a
+  ranked list.** Show why each survivor passed and each drop's one-line reason so the user can override.
+- **Auto-drop (same weight as no-sponsorship):**
+  - **Citizenship / clearance required:** CJIS, FedRAMP, "US citizen", "green card / permanent
+    resident required", security clearance → a sponsorship-needing candidate cannot meet these.
+    (Real leak: CrowdStrike "must be eligible for CJIS clearance".)
+  - **Geo-eligibility that excludes the candidate:** "not eligible to be hired in <their state>"
+    (e.g. WA), or "remote but must reside in <specific metro>" (NYC/SF-only) when they're not there
+    and won't relocate. (Leaks: Twilio "not hireable in CA/CT/NJ/NY/PA/WA"; Arize "remote — must be
+    NYC-metro".) The scraped remote flag hides these — read the JD's location clause.
+  - **Employment type ≠ full-time:** contract / contractor / part-time / intern / hourly gig,
+    incl. AI-training / data-labeling gigs. (Leak: CareerFlow "$20–75/hr, 10–15 hr/wk, contract".)
+  - **Stale / closed:** posting older than ~45 days, flagged stale, or gone/`isListed:false` at the
+    source ATS. (Leaks: Concentrate AI's Full-Stack SWE was already removed; FreeUp was a 2024 post.)
+- **Down-rank / flag (soft — surface but mark clearly):**
+  - **Domain mismatch (read requirements, not title):** infra / SRE / DevOps / platform-K8s /
+    identity-security (SCIM/SAML/LDAP) / ML-research / AI-ops-automation / solutions- or
+    forward-deployed-eng ≠ an app-level full-stack / frontend / backend / data candidate. Title says
+    "Software Engineer" but body is infra → down-rank. (Leaks: Vercel identity/SCIM, Mixpanel
+    production-K8s DevInfra, Lightfield "SWE, Infrastructure", GitLab internal AI-ops.)
+  - **Required stack the candidate lacks** (hard requirement, not "preferred"): .NET/C#,
+    Ruby-on-Rails-required, Java-as-sole-required, Go/Scala/Kubernetes-required. (Leak: EPAM .NET.)
+  - **Level mismatch:** Senior / Staff / Principal / Lead required, or YOE floor ≫ target
+    (mid ≈ 3 yr). (Leaks: Tailscale & Nebius senior-pitched; Concentrate "5–12 years".)
+  - **Comp floor:** deprioritize below ~$120k for a mid-level US SWE. (Leaks: CVS $72–144k, GitLab $108–129k.)
+- Wiring: `profiles/<user>.yaml` `negative:` / title-exclude lists catch some of these; the
+  citizenship/clearance, state-exclusion, employment-type, and staleness checks should be added to
+  `scoring.py` / `visa.py`-style parsers so they hard-drop, not just down-weight.
+
 ## Scraped remote flag is unreliable
 <!-- added: 2026-07-20 · last_confirmed: 2026-07-20 · status: active -->
 - Never trust the market-scraper (JobSpy) remote/workplace flag for the location gate or for
