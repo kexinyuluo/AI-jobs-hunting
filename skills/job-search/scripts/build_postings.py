@@ -84,7 +84,7 @@ _TRACKED = ("title", "location", "url", "workplace_raw", "salary_text",
 _VISA_HINT_RE = re.compile(
     r"sponsor|visa|immigration|work\s*authoriz|authorized\s+to\s+work|"
     r"h-?1b|green\s*card|permanent\s+resid|\bperm\b|cap[-\s]exempt|"
-    r"citizen|i-140|\bgc\b|relocation",
+    r"citizen|i-140|\bgc\b|relocation|export\s*control|u\.?s\.?\s+person",
     re.I)
 
 # The pre-gate MUST remain a SUPERSET of every sponsorship phrase token, or a gated
