@@ -1,5 +1,5 @@
 # Canary set — ask-me-anything skill
-# Grounded in .agents/skills/ask-me-anything/SKILL.md: the five-step workflow (0 Setup ->
+# Grounded in skills/ask-me-anything/SKILL.md: the five-step workflow (0 Setup ->
 # 1 Profile & filters -> 2 Search -> 3 Generate -> 4 Review & track -> 5 Interview prep), the
 # repo structure, per-step dependencies, per-job status + derived-rollup folder, and the public vs private
 # (private/ overlay) model. This skill ORIENTS and routes — it does NOT do the work itself.
@@ -47,7 +47,7 @@ canaries:
       - "Explains the public repo (timeless tooling + the fake example candidate) + an optional private overlay — real identity/applications/interviews mount under a git-ignored `private/` path that is its own git repo."
       - "Says config.yaml is git-ignored and its paths point at the private overlay; real profile/baseline/reference DOCX and all applications/interviews stay private."
       - "Explains the coding-interview skill ships ONLY with the private overlay, so it is not part of the public toolkit."
-      - "Points to the authoritative sources — AGENTS.md 'Public vs Private' and docs/PRIVATE_OVERLAY.md."
+      - "Points to the authoritative sources — AGENTS.md 'Public vs Private' and handbook/private-overlay.md."
     failure_modes:
       - "Suggests committing real identity to the public repo, or says config.yaml is tracked."
       - "Claims coding-interview is a public skill, or invents a different private-data location."
@@ -61,7 +61,7 @@ canaries:
     expected_behavior:
       - "Routes to Step 2 / the job-search skill and describes what it does (fetches live postings from 100+ ATS boards + keyless aggregators + JobSpy Indeed/Google, filters/ranks, writes a shortlist) — without running a search itself."
       - "Answers the keys question correctly — NO keys for the default Stage 1 run; only optional Stage 2 (`--stage 2`) needs RAPIDAPI_KEY / ADZUNA_* env vars, and missing keys are skipped quietly."
-      - "Names the real dependency (network + python-jobspy in the venv) and points to .agents/skills/job-search/SKILL.md for the full flag set."
+      - "Names the real dependency (network + python-jobspy in the venv) and points to skills/job-search/SKILL.md for the full flag set."
     failure_modes:
       - "Says API keys are required for basic search."
       - "Executes an actual job search instead of orienting/routing."

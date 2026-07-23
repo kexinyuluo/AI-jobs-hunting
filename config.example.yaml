@@ -10,6 +10,10 @@ paths:
   company_levels_yaml: "examples/profile/company-levels.example.yaml"
   applications_root: "examples/applications"
   discoveries_dir: "examples/applications/1_discoveries"
+  # The single calendar/todo file the application tracker maintains alongside
+  # per-job progress (interview schedules, booking todos, reschedule history).
+  # Defaults to <applications_root>/0_profile/calendar.md when omitted.
+  calendar_md: "examples/applications/0_profile/calendar.md"
 job_search:
   default_profile: "example"
 generation:
@@ -27,6 +31,12 @@ outlook_email:
   account: ""
   client_id: ""
   tenant: "consumers"
+  # Optional explicit company -> email-domain mapping for ``store-review``.
+  # Keep real values in git-ignored config.yaml or this private mapping file;
+  # shared ATS domains (for example greenhouse.io) are rejected automatically.
+  # company_domains:
+  #   Example Company: [example.com]
+  # company_domains_path: "private/email-company-domains.yaml"
 location_policy:
   # Preferred-metro tokens (fictional placeholders for the "City, ST" example persona).
   metro: [springfield, fairview, riverside, lakemont]

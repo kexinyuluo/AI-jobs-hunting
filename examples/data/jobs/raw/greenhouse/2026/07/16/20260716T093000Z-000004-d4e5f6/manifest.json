@@ -1,0 +1,24 @@
+{
+  "context": {
+    "company": "examplecorp",
+    "profile": "profile-01"
+  },
+  "envelope_schema": 1,
+  "fetch_id": "20260716T093000Z-000004-d4e5f6",
+  "fetched_at": "2026-07-16T09:30:00Z",
+  "operation": "jd",
+  "payload": {
+    "blob": "e8c02e5e65b7ea1713860ee7d595053c08dc20c62c44158a683f6d3321dbd5a7",
+    "bytes_raw": 32,
+    "content_type": "text/markdown"
+  },
+  "request": {
+    "url": "https://boards.greenhouse.io/examplecorp/jobs/9999999"
+  },
+  "response_headers": {
+    "content-type": "text/html"
+  },
+  "source": "greenhouse",
+  "status": 200,
+  "tool_version": "capture-lib 1 / fixture-generator"
+}

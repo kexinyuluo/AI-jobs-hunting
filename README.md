@@ -26,7 +26,7 @@ together:
 | **Privacy is architectural**           | Real data can live in a separate private overlay. A blocking leak guard checks paths, text, structural PII, identity tokens, and extractable DOCX/PDF content before the public toolkit can ship.                                                                                            |
 
 See the [feature inventory, competitor matrix, implementation deep dives, limitations,
-and sources](docs/comparisons/resume-writing-tools.md). The comparison was researched
+and sources](handbook/comparisons/resume-writing-tools.md). The comparison was researched
 on 2026-07-20; “not publicly documented” is evidence of differentiation, not a claim
 that another product could never implement the capability.
 
@@ -57,7 +57,7 @@ the fictional "Jordan Rivers" example candidate. Requires Python 3.11+
 ```bash
 git clone https://github.com/<owner>/jobs-finder-toolkit.git && cd jobs-finder-toolkit   # or your fork
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
-.venv/bin/python .agents/skills/resume-writer/scripts/render.py examples/applications/6_drafted/example-corp-senior-software-engineer/
+.venv/bin/python skills/resume-writer/scripts/render.py examples/applications/6_drafted/example-corp-senior-software-engineer/
 ```
 
 That renders and validates the example resume + cover letter you see above. Then
@@ -87,7 +87,7 @@ move it to `5_applied/`, `4_in_progress/`, `3_rejected/`, or `2_ignored/` as thi
 progress (or ask the agent; the number prefix is a fixed sort key, not a sequence). `status.py` prints the pipeline any time:
 
 ```bash
-.venv/bin/python .agents/skills/application-tracker/scripts/status.py
+.venv/bin/python skills/application-tracker/scripts/status.py
 ```
 
 New here? Ask your agent anything — the `ask-me-anything` skill is the built-in
@@ -100,18 +100,18 @@ Your real identity never enters this repo. Copy the example config and point its
 
 ```bash
 cp config.example.yaml config.yaml     # edit: your name, your file paths
-python scripts/bootstrap_overlay.py    # wires git hooks (+ overlay symlinks if mounted)
+python automation/bootstrap_overlay.py    # wires git hooks (+ overlay symlinks if mounted)
 ```
 
 Keep your real profile, applications, and interview prep in a **private overlay** —
 your own git repo mounted at the git-ignored `private/` directory. A leak guard
 (run blocking in CI and in the pre-push hook) screens every tracked file for your
 identity so nothing personal can ship by accident. Full walkthrough, including
-creating an overlay from scratch: [docs/PRIVATE_OVERLAY.md](docs/PRIVATE_OVERLAY.md).
+creating an overlay from scratch: [handbook/private-overlay.md](handbook/private-overlay.md).
 
 ## The skills
 
-Skills live in [`.agents/skills/`](.agents/skills/) — self-contained (each bundles
+Skills live in [`skills/`](skills/) — self-contained (each bundles
 its scripts and vendored dependencies), agent-agnostic, and also published as a
 Claude Code plugin marketplace via
 [`.claude-plugin/marketplace.json`](.claude-plugin/marketplace.json):
@@ -122,7 +122,7 @@ Claude Code plugin marketplace via
 - `application-tracker` — pipeline status, structured `meta.yaml` facts, notes, skip-logs
 - `behavioral-interview-prep` — project-based STAR story banks and reusable answers
 - `company-research` — deep company + role research and an interview question bank
-- `outlook-email-assistant` — read personal Outlook mail and create job-context reply drafts; never sends
+- `email-assistant` — read personal Outlook mail and create job-context reply drafts; never sends
 - `gardener` — periodic memory hygiene for the toolkit's agent-memory zones (dry-run by default)
 
 ## Repo layout
@@ -130,22 +130,26 @@ Claude Code plugin marketplace via
 ```
 config.example.yaml      # tracked "Jordan Rivers" placeholder (+ no-config fallback)
 examples/                # fictional profile/templates/app + public resume/JD fixtures
-.agents/skills/<skill>/  # the skills: SKILL.md + self-contained scripts
-scripts/                 # shared modules, vendoring, maintenance, metrics, leak guard
+skills/<skill>/          # the skills: SKILL.md + self-contained scripts
+automation/              # everything that runs: shared modules, vendoring, maintenance,
+                         #   metrics, leak guard, git hooks, the reconciler
+templates/               # single source of truth for process-file schemas
 evals/                   # per-skill canary evals (gate skill-instruction changes)
-hooks/                   # tracked git hooks (drift check, compile, leak guard)
-docs/                    # design docs: ARCHITECTURE, PRIVATE_OVERLAY, METRICS
+handbook/                # extended reference: architecture, private overlay, metrics
+design/                  # active design programs (one folder per topic)
+message-queue/ tasks/    # async human<->agent messages / work items (status = folder)
+memory/ roadmap/ history/  # ADRs+facts+lessons / desired-vs-current state / session handovers
 AGENTS.md                # the agent-facing contract (guardrails + conventions)
 ```
 
 ## Learn more
 
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — how it works: the render pipeline,
+- [handbook/architecture.md](handbook/architecture.md) — how it works: the render pipeline,
   config system, application-folder model, vendoring, CI gates, and the full repo
   reference table
-- [docs/PRIVATE_OVERLAY.md](docs/PRIVATE_OVERLAY.md) — the public/private two-repo
+- [handbook/private-overlay.md](handbook/private-overlay.md) — the public/private two-repo
   model and overlay setup
-- [docs/comparisons/resume-writing-tools.md](docs/comparisons/resume-writing-tools.md)
+- [handbook/comparisons/resume-writing-tools.md](handbook/comparisons/resume-writing-tools.md)
   — detailed feature inventory, market comparison, implementation deep dives, and
   official sources
 - [AGENTS.md](AGENTS.md) — the contract AI agents follow (no fabrication,

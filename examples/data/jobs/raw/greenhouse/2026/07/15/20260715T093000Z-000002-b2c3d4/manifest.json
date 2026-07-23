@@ -1,0 +1,28 @@
+{
+  "context": {
+    "company": "examplecorp",
+    "profile": "profile-01"
+  },
+  "envelope_schema": 1,
+  "fetch_id": "20260715T093000Z-000002-b2c3d4",
+  "fetched_at": "2026-07-15T09:30:00Z",
+  "item_count": 2,
+  "operation": "board",
+  "payload": {
+    "blob": "f90ca34c98689ad84eefc4903248aefc6714de44ead3e3f90cafdd57af50088b",
+    "bytes_raw": 846,
+    "content_type": "application/json"
+  },
+  "request": {
+    "params": {
+      "content": "true"
+    },
+    "url": "https://boards-api.greenhouse.io/v1/boards/examplecorp/jobs"
+  },
+  "response_headers": {
+    "content-type": "application/json"
+  },
+  "source": "greenhouse",
+  "status": 200,
+  "tool_version": "capture-lib 1 / fixture-generator"
+}
